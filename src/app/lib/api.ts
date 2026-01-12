@@ -23,6 +23,7 @@ export interface ReportData {
       date: string;
       reason: string;
       comment: string;
+      rating?: number;     // <--- DODAJ TĘ LINIJKĘ (było jej brak)
       reportedEmail?: string;
       facebookLink?: string;
       screenshotUrl?: string;
@@ -31,27 +32,28 @@ export interface ReportData {
   error?: string;
 }
 
+
 export async function checkCompany(query: string, type: SearchType): Promise<ReportData | null> {
   try {
     let url = '';
 
     if (type === 'NIP') {
-      // Endpoint search w backendzie obsługuje logikę NIP/Tel, 
-      // ale możemy też uderzać bezpośrednio jeśli wolisz.
-      // Użyjmy uniwersalnego endpointu search, który stworzyliśmy w serwisie:
+      // Dla NIP używamy uniwersalnego search (on sam przekieruje na logikę firmy)
       url = `${BACKEND_URL}/verification/search/${query}`;
     } else {
+      // === FIX: DLA TELEFONU UŻYWAMY DEDYKOWANEGO ENDPOINTU ===
+      // Musimy zakodować plusa w numerze (np. +48...)
       const safeQuery = encodeURIComponent(query);
-      url = `${BACKEND_URL}/verification/search/${safeQuery}`;
+      url = `${BACKEND_URL}/verification/phone/${safeQuery}`;
     }
 
     const res = await fetch(url, {
-      cache: 'no-store',
+      cache: 'no-store', // Wyłączamy cache, żeby widzieć nowe zgłoszenia od razu
       headers: { 'Content-Type': 'application/json' },
     });
 
     if (!res.ok) {
-      console.error(`API Error ${res.status}`);
+      // Jeśli 404 lub 400 - to znaczy że numeru nie ma lub błędny
       return null;
     }
 
@@ -91,4 +93,26 @@ export async function submitReport(reportData: any, token: string) {
         body: JSON.stringify(reportData)
     });
     return res.ok;
+}
+export interface RecentReport {
+    id: number;
+    targetValue: string;
+    targetType: 'NIP' | 'PHONE';
+    trustScore: number;
+    rating: number;
+    reason: string;
+    comment: string;
+    date: string;
+}
+
+export async function getRecentReports(): Promise<RecentReport[]> {
+    try {
+        const res = await fetch(`${BACKEND_URL}/reports/latest`, { 
+            cache: 'no-store' // Zawsze świeże dane
+        });
+        if (!res.ok) return [];
+        return await res.json();
+    } catch (e) {
+        return [];
+    }
 }

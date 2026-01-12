@@ -183,18 +183,19 @@ export default function ReportButton({ defaultTargetType, defaultValue }: Report
                 {/* WSPÓLNE POLA */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-slate-main text-xs uppercase font-bold mb-2">Powód Zgłoszenia</label>
-                        <select 
-                            className="w-full bg-navy-900 border border-navy-700 rounded-lg p-3 text-white focus:border-teal outline-none"
-                            value={reason} onChange={e => setReason(e.target.value)}
-                        >
-                            <option value="SCAM">Oszustwo Finansowe (SCAM)</option>
-                            <option value="TOWAR">Brak wysyłki towaru</option>
-                            <option value="FAKTURA">Fałszywa faktura / Dokumenty</option>
-                            <option value="RODO">Naruszenie RODO / Wyciek danych</option>
-                            <option value="INNE">Inne naruszenie</option>
-                        </select>
-                    </div>
+    <label className="block text-xs uppercase font-bold text-slate-main mb-2">Powód</label>
+    <select 
+        className="w-full bg-navy-900 border border-navy-700 rounded p-3 text-white focus:border-teal outline-none"
+        value={reason} 
+        onChange={e => setReason(e.target.value)}
+    >
+        <option value="SCAM">⚠️ Oszustwo / Wyłudzenie</option>
+        <option value="SPAM">📞 Spam Telefoniczny</option>
+        <option value="TOWAR">📦 Nieotrzymany Towar</option>
+        <option value="RODO">🔒 Wyciek Danych / RODO</option>
+        <option value="OTHER">ℹ️ Inne</option>
+    </select>
+</div>
                     <div>
                         <label className="block text-slate-main text-xs uppercase font-bold mb-2">Poziom Ryzyka (1-5)</label>
                         <div className="flex gap-2">

@@ -1,31 +1,33 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { submitReport } from '../../lib/api';
 
-// Komponent z logiką, opakowany w Suspense
+// Komponent z logiką
 function NewReportForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
   // Pobieramy wstępne dane z URL (np. ?value=123456789&type=PHONE)
+  // Jeśli brak value, to znaczy że user wszedł z przycisku "Dodaj Zgłoszenie"
   const initialValue = searchParams.get('value') || '';
   const initialType = searchParams.get('type') || 'PHONE';
 
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Wybór Typu, 2: Szczegóły
 
   // DANE FORMULARZA
-  const [targetType, setTargetType] = useState<'NIP' | 'PHONE'>(initialType === 'NIP' ? 'NIP' : 'PHONE');
+  const [targetType, setTargetType] = useState<'NIP' | 'PHONE'>(
+      initialType === 'NIP' ? 'NIP' : 'PHONE'
+  );
+  
   const [targetValue, setTargetValue] = useState(initialValue);
-  const [isPrivatePerson, setIsPrivatePerson] = useState(false); // Czy to osoba prywatna?
+  const [isPrivatePerson, setIsPrivatePerson] = useState(false);
 
   const [reason, setReason] = useState('SCAM');
   const [rating, setRating] = useState(1);
   const [comment, setComment] = useState('');
   
-  // Dane dodatkowe (Osoba prywatna)
   const [email, setEmail] = useState('');
   const [fbLink, setFbLink] = useState('');
 
@@ -34,7 +36,6 @@ function NewReportForm() {
     const token = localStorage.getItem('token');
     
     if (!token) {
-        // Jeśli niezalogowany, przekieruj na login i wróć tu po zalogowaniu
         localStorage.setItem('redirectAfterLogin', `/report/new?value=${targetValue}&type=${targetType}`);
         router.push('/login');
         return;
@@ -42,15 +43,11 @@ function NewReportForm() {
 
     setLoading(true);
 
-    // Jeśli zgłaszamy Osobę Prywatną, typ w backendzie to 'PERSON'
-    // Jeśli zgłaszamy Firmę (NIP), typ to 'NIP'
-    // Jeśli zgłaszamy sam Telefon (bez określenia), typ to 'PHONE'
-    
     let finalType = targetType;
-    if (targetType === 'PHONE' && isPrivatePerson) finalType = 'PHONE'; // Backend oczekuje 'PERSON' dla osób prywatnych
+    if (targetType === 'PHONE' && isPrivatePerson) finalType = 'PERSON' as any; 
 
     const payload = {
-        targetType: finalType as string, // rzutowanie na string bo DTO przyjmuje string
+        targetType: finalType as string, 
         targetValue: targetValue,
         rating,
         reason,
@@ -64,7 +61,6 @@ function NewReportForm() {
 
     if (success) {
         alert('Dodano zgłoszenie! Dziękujemy.');
-        // Przekieruj do nowo utworzonego raportu
         if (targetType === 'NIP') router.push(`/report/nip/${targetValue}`);
         else router.push(`/report/phone/${encodeURIComponent(targetValue)}`);
     } else {
@@ -73,12 +69,27 @@ function NewReportForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-navy-800 rounded-2xl border border-navy-700 shadow-2xl p-8">
-        <h1 className="text-3xl font-bold text-white mb-2">To pierwsze zgłoszenie tego numeru</h1>
-        <p className="text-slate-main mb-8">
-            Numer <span className="text-teal font-mono font-bold">{targetValue}</span> nie istnieje jeszcze w naszej bazie. 
-            Wypełnij formularz, aby ostrzec innych.
-        </p>
+    <div className="max-w-2xl mx-auto bg-navy-800 rounded-2xl border border-navy-700 shadow-2xl p-8 mt-12">
+        
+        {/* === DYNAMICZNY NAGŁÓWEK === */}
+        {initialValue ? (
+            // Scenariusz 1: Przyszedł z wyszukiwarki (numeru nie ma w bazie)
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-white mb-2">To pierwsze zgłoszenie</h1>
+                <p className="text-slate-main">
+                    Podmiot <span className="text-teal font-mono font-bold">{initialValue}</span> nie widnieje w naszej bazie. 
+                    Bądź pierwszy i ostrzeż innych.
+                </p>
+            </div>
+        ) : (
+            // Scenariusz 2: Przyszedł z przycisku "Dodaj Zgłoszenie"
+            <div className="mb-8 border-b border-navy-700 pb-6">
+                <h1 className="text-3xl font-bold text-white mb-2">Nowe Zgłoszenie</h1>
+                <p className="text-slate-main">
+                    Wypełnij formularz, aby zgłosić nieuczciwego sprzedawcę, firmę lub numer telefonu.
+                </p>
+            </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
             
@@ -92,8 +103,8 @@ function NewReportForm() {
                         onClick={() => { setTargetType('PHONE'); setIsPrivatePerson(true); }}
                         className={`p-4 rounded-lg border text-left transition-all ${targetType === 'PHONE' && isPrivatePerson ? 'bg-teal/20 border-teal text-white' : 'bg-navy-900 border-navy-700 text-slate-400'}`}
                     >
-                        <div className="font-bold mb-1">Osoba Prywatna</div>
-                        <div className="text-xs opacity-70">Np. sprzedawca z OLX, pracownik, oszust telefoniczny.</div>
+                        <div className="font-bold mb-1">Osoba / Telefon</div>
+                        <div className="text-xs opacity-70">Oszust z OLX, pracownik, telemarketer.</div>
                     </button>
 
                     <button
@@ -102,22 +113,24 @@ function NewReportForm() {
                         className={`p-4 rounded-lg border text-left transition-all ${targetType === 'NIP' ? 'bg-blue-900/40 border-blue-500 text-white' : 'bg-navy-900 border-navy-700 text-slate-400'}`}
                     >
                         <div className="font-bold mb-1">Firma (Podmiot)</div>
-                        <div className="text-xs opacity-70">Jeśli znasz NIP firmy, która Cię oszukała.</div>
+                        <div className="text-xs opacity-70">Nieuczciwa firma, sklep internetowy.</div>
                     </button>
                 </div>
 
-                {/* Jeśli wybrano NIP, pozwól go edytować (bo user mógł wpisać telefon a chce zgłosić NIP) */}
-                {targetType === 'NIP' && (
-                    <div className="mt-4">
-                        <label className="block text-slate-main text-xs uppercase font-bold mb-2">Podaj Numer NIP</label>
-                        <input 
-                            className="w-full bg-navy-900 border border-navy-700 rounded p-3 text-white font-mono"
-                            placeholder="Wpisz 10 cyfr NIP"
-                            value={targetValue}
-                            onChange={e => setTargetValue(e.target.value)}
-                        />
-                    </div>
-                )}
+                {/* Pole do wpisania numeru/NIP (Pokazujemy ZAWSZE jeśli użytkownik nie przyszedł z URL) */}
+                <div className="mt-6 animate-in fade-in">
+                    <label className="block text-slate-main text-xs uppercase font-bold mb-2">
+                        {targetType === 'NIP' ? 'Numer NIP Firmy' : 'Numer Telefonu'} *
+                    </label>
+                    <input 
+                        required
+                        className="w-full bg-navy-900 border border-navy-700 rounded p-3 text-white font-mono text-lg focus:border-teal outline-none"
+                        placeholder={targetType === 'NIP' ? 'Np. 5252525252' : 'Np. 500123456'}
+                        value={targetValue}
+                        onChange={e => setTargetValue(e.target.value)}
+                        disabled={!!initialValue} // Blokujemy edycję tylko jeśli przyszedł z URL
+                    />
+                </div>
             </div>
 
             {/* ETAP 2: DANE ZGŁOSZENIA */}
@@ -128,10 +141,11 @@ function NewReportForm() {
                         className="w-full bg-navy-900 border border-navy-700 rounded-lg p-3 text-white focus:border-teal outline-none"
                         value={reason} onChange={e => setReason(e.target.value)}
                     >
-                        <option value="SCAM">Oszustwo / Wyłudzenie</option>
-                        <option value="SPAM">Spam Telefoniczny</option>
-                        <option value="TOWAR">Nieotrzymany towar</option>
-                        <option value="RODO">Wyciek Danych</option>
+                        <option value="SCAM">⚠️ Oszustwo / Wyłudzenie</option>
+                        <option value="SPAM">📞 Spam Telefoniczny</option>
+                        <option value="TOWAR">📦 Nieotrzymany Towar</option>
+                        <option value="RODO">🔒 Wyciek Danych / RODO</option>
+                        <option value="OTHER">ℹ️ Inne</option>
                     </select>
                 </div>
                 <div>
@@ -192,7 +206,6 @@ function NewReportForm() {
   );
 }
 
-// Główny Export z Suspense (Wymagane w Next.js 13+ dla useSearchParams)
 export default function NewReportPage() {
     return (
         <main className="min-h-screen bg-navy-900 text-white p-4 md:p-8 flex items-center justify-center">

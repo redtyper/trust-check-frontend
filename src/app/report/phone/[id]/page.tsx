@@ -2,7 +2,15 @@ import { checkCompany } from '../../../lib/api';
 import Link from 'next/link';
 import ReportButton from '../../../../components/ReportButton';
 
-// Pomocnicza funkcja do wyciągania unikalnych danych z raportów
+// Mapa tłumaczeń kodów na czytelne etykiety
+const reasonMap: Record<string, string> = {
+  'SCAM': '⚠️ Oszustwo / Wyłudzenie',
+  'SPAM': '📞 Spam Telefoniczny',
+  'TOWAR': '📦 Nieotrzymany Towar',
+  'RODO': '🔒 Wyciek Danych / RODO',
+  'OTHER': 'ℹ️ Inne'
+};
+
 const getOsintData = (comments: any[]) => {
   const emails = new Set<string>();
   const fbs = new Set<string>();
@@ -22,7 +30,7 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
   const params = await props.params;
   const decodedPhone = decodeURIComponent(params.id);
   
-  // Pobieramy dane (backend sam agreguje zgłoszenia dla tego numeru)
+  // Ważne: Wymuszamy pobranie świeżych danych (bez cache), żeby zobaczyć nowe zgłoszenie od razu
   const data = await checkCompany(decodedPhone, 'PHONE');
 
   if (!data || data.error) {
@@ -31,7 +39,6 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
           <h1 className="text-2xl font-bold text-crimson mb-2">Brak Danych</h1>
           <p className="text-slate-main">Numer {decodedPhone} nie posiada jeszcze historii.</p>
           <div className="mt-8">
-             {/* Jeśli nie ma danych, od razu dajemy guzik do zgłoszenia */}
              <ReportButton defaultTargetType="PHONE" defaultValue={decodedPhone} />
           </div>
           <Link href="/" className="mt-4 text-sm text-slate-500 hover:text-white">Wróć</Link>
@@ -39,17 +46,12 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
     );
   }
 
-  // Jeśli numer jest powiązany z firmą -> przekierowanie (zostawiamy tę logikę z poprzednich kroków)
-  // (Opcjonalnie możesz tu wstawić redirect z 'next/navigation' jeśli chcesz wymusić)
-  
-  // Analiza danych
   const score = data.trustScore;
   const isSafe = score >= 70;
   const isCritical = score <= 30;
   const osint = getOsintData(data.community?.latestComments || []);
   const hasOsint = osint.emails.length > 0 || osint.fbs.length > 0;
 
-  // Kolory
   const scoreColor = isSafe ? 'text-teal' : isCritical ? 'text-crimson' : 'text-orange-500';
   const borderColor = isSafe ? 'border-teal' : isCritical ? 'border-crimson' : 'border-orange-500';
 
@@ -61,14 +63,11 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
           ← WRÓĆ DO WYSZUKIWANIA
         </Link>
 
-        {/* GŁÓWNA KARTA */}
+        {/* KARTA GŁÓWNA */}
         <div className={`relative overflow-hidden bg-navy-800 rounded-3xl border ${borderColor} shadow-2xl`}>
-          {/* Pasek boczny statusu */}
           <div className={`absolute left-0 top-0 bottom-0 w-2 ${isSafe ? 'bg-teal' : isCritical ? 'bg-crimson' : 'bg-orange-500'}`} />
           
-          <div className="p-8 md:p-10 flex flex-col md:flex-row gap-8 items-start justify-between">
-            
-            {/* Lewa strona: Numer i Status */}
+          <div className="p-8 flex flex-col md:flex-row gap-8 items-start justify-between">
             <div>
               <span className="text-xs font-bold text-slate-main uppercase tracking-widest block mb-2">
                 Raport Numeru
@@ -76,7 +75,6 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
               <h1 className="text-4xl md:text-5xl font-mono text-white tracking-tight mb-4">
                 {data.query}
               </h1>
-              
               <div className="flex flex-wrap gap-3">
                  <span className={`px-4 py-2 rounded-lg text-sm font-bold border ${borderColor} bg-navy-900 ${scoreColor}`}>
                     RYZYKO: {data.riskLevel}
@@ -87,133 +85,98 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
               </div>
             </div>
 
-            {/* Prawa strona: Trust Score */}
             <div className="bg-navy-900/50 p-6 rounded-2xl border border-navy-700 text-center min-w-[140px]">
                  <div className={`text-5xl font-bold ${scoreColor} mb-1`}>{score}</div>
                  <div className="text-xs text-slate-main uppercase tracking-widest">Trust Score</div>
             </div>
           </div>
 
-          {/* SEKJCA OSINT - POKAZUJEMY TYLKO JEŚLI SĄ DANE */}
+          {/* DANE OSINT */}
           {hasOsint && (
-            <div className="bg-navy-900/80 border-t border-navy-700 p-6 md:p-8 animate-in fade-in">
+            <div className="bg-navy-900/80 border-t border-navy-700 p-6 md:p-8">
                 <h3 className="text-white font-bold mb-4 flex items-center gap-2">
                     <span className="text-blue-400">🕵️‍♂️</span> Zidentyfikowane Dane (OSINT)
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {osint.emails.length > 0 && (
-                        <div>
+                        <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
                             <span className="text-xs text-slate-500 uppercase font-bold block mb-2">Powiązane Emaile</span>
-                            {osint.emails.map(email => (
-                                <div key={email} className="bg-navy-800 border border-navy-600 px-3 py-2 rounded text-blue-300 font-mono text-sm mb-2 select-all">
-                                    @{email}
-                                </div>
-                            ))}
+                            {osint.emails.map(e => <div key={e} className="font-mono text-teal">{e}</div>)}
                         </div>
                     )}
                     {osint.fbs.length > 0 && (
-                        <div>
-                            <span className="text-xs text-slate-500 uppercase font-bold block mb-2">Profile Społecznościowe</span>
-                            {osint.fbs.map(fb => (
-                                <a key={fb} href={fb} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-blue-900/20 hover:bg-blue-900/40 border border-blue-800 px-3 py-2 rounded text-blue-200 text-sm mb-2 transition-colors">
-                                    <span>🔗</span> {fb}
-                                </a>
+                        <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
+                             <span className="text-xs text-slate-500 uppercase font-bold block mb-2">Profile Społecznościowe</span>
+                            {osint.fbs.map(link => (
+                                <a key={link} href={link} target="_blank" className="block text-blue-400 hover:underline truncate">{link}</a>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
           )}
+
+          {/* ACTIONS */}
+          <div className="bg-navy-900/30 p-4 flex justify-end border-t border-navy-700">
+             <ReportButton defaultTargetType="PHONE" defaultValue={decodedPhone} />
+          </div>
         </div>
 
         {/* LISTA ZGŁOSZEŃ */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Statystyki */}
-          <div className="bg-navy-800 rounded-2xl p-6 border border-navy-700 h-fit">
-            <h3 className="text-lg font-bold text-white mb-6">Podsumowanie</h3>
-            <div className="space-y-4">
-                <div className="flex justify-between">
-                    <span className="text-slate-400">Liczba zgłoszeń</span>
-                    <span className="text-white font-mono">{data.community?.totalReports || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-slate-400">Ostrzeżenia (1-2★)</span>
-                    <span className="text-crimson font-mono font-bold">{data.community?.alerts || 0}</span>
-                </div>
-            </div>
-            
-            <div className="mt-8 pt-6 border-t border-navy-700">
-                <p className="text-xs text-slate-500 mb-4 text-center">
-                    Zostałeś oszukany przez ten numer?
-                </p>
-                <div className="flex justify-center">
-                     <ReportButton defaultTargetType="PHONE" defaultValue={decodedPhone} />
-                </div>
-            </div>
-          </div>
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                Zgłoszenia Społeczności
+                <span className="bg-navy-800 text-slate-main text-sm px-3 py-1 rounded-full border border-navy-700">
+                    {data.community?.totalReports || 0}
+                </span>
+            </h2>
 
-          {/* Oś Czasu (Komentarze) */}
-          <div className="lg:col-span-2 space-y-4">
-            <h3 className="text-lg font-bold text-white mb-2">Historia Aktywności</h3>
-            
-            {!data.community?.latestComments?.length ? (
-              <div className="bg-navy-800/50 rounded-xl p-8 text-center text-slate-500 border border-navy-700 border-dashed">
-                Ten numer jest czysty. Brak zgłoszeń w bazie.
-              </div>
-            ) : (
-              data.community.latestComments.map((comment: any, idx: number) => (
-                <div key={idx} className="bg-navy-800 p-6 rounded-xl border border-navy-700 relative group hover:border-navy-600 transition-colors">
-                  
-                  {/* Nagłówek Komentarza */}
-                  <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${comment.rating <= 2 ? 'bg-crimson/10 text-crimson border-crimson/20' : 'bg-teal/10 text-teal border-teal/20'}`}>
-                            {comment.reason}
-                        </span>
-                        {/* Gwiazdki */}
-                        <div className="flex text-orange-500 text-xs">
-                            {'★'.repeat(comment.rating || 1)}
-                            <span className="text-navy-600">{'★'.repeat(5 - (comment.rating || 1))}</span>
+            {data.community?.latestComments && data.community.latestComments.length > 0 ? (
+                <div className="grid gap-4">
+                    {data.community.latestComments.map((comment, idx) => (
+                        <div key={idx} className="bg-navy-800 border border-navy-700 p-6 rounded-xl shadow-lg">
+                            <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
+                                <div className="flex flex-col gap-2">
+                                    {/* GWIAZDKI */}
+                                    <div className="flex text-yellow-500 text-lg">
+                                        {'★'.repeat(comment.rating || 1)}
+                                        {'☆'.repeat(5 - (comment.rating || 1))}
+                                    </div>
+                                    
+                                    {/* === TUTAJ DODALIŚMY WYŚWIETLANIE POWODU === */}
+                                    <span className="inline-block bg-navy-900 border border-navy-600 text-slate-300 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide w-fit">
+                                        {reasonMap[comment.reason] || comment.reason}
+                                    </span>
+                                </div>
+                                <span className="text-slate-500 text-sm font-mono">
+                                    {new Date(comment.date).toLocaleDateString('pl-PL')}
+                                </span>
+                            </div>
+
+                            <p className="text-slate-200 leading-relaxed bg-navy-900/50 p-4 rounded-lg border border-navy-700/50">
+                                "{comment.comment}"
+                            </p>
+
+                            {/* OSINT wewnątrz komentarza (jeśli ten konkretny zgłaszający podał dane) */}
+                            {(comment.reportedEmail || comment.facebookLink) && (
+                                <div className="mt-4 flex gap-3 text-xs pt-3 border-t border-navy-700/50">
+                                    {comment.reportedEmail && (
+                                        <span className="text-teal bg-teal/10 px-2 py-1 rounded">✉️ {comment.reportedEmail}</span>
+                                    )}
+                                    {comment.facebookLink && (
+                                        <span className="text-blue-400 bg-blue-400/10 px-2 py-1 rounded">👤 Profil FB/OLX</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    <span className="text-xs text-slate-500 font-mono">
-                      {comment.date ? new Date(comment.date).toLocaleDateString() : 'Nieznana data'}
-                    </span>
-                  </div>
-
-                  {/* Treść */}
-                  <p className="text-slate-300 text-sm leading-relaxed mb-4">
-                    "{comment.comment}"
-                  </p>
-
-                  {/* Dodatkowe Dowody w Komentarzu */}
-                  {(comment.screenshotUrl || comment.facebookLink || comment.reportedEmail) && (
-                      <div className="flex flex-wrap gap-2 pt-3 border-t border-navy-700/50">
-                          {comment.reportedEmail && (
-                              <span className="text-xs bg-navy-900 text-blue-300 px-2 py-1 rounded border border-navy-700 flex items-center gap-1">
-                                  📧 {comment.reportedEmail}
-                              </span>
-                          )}
-                          {comment.facebookLink && (
-                              <a href={comment.facebookLink} target="_blank" rel="noopener" className="text-xs bg-blue-900/20 hover:bg-blue-900/40 text-blue-200 px-2 py-1 rounded border border-blue-900/30 flex items-center gap-1 transition-colors">
-                                  👤 Profil FB/OLX
-                              </a>
-                          )}
-                          {comment.screenshotUrl && (
-                              <a href={comment.screenshotUrl} target="_blank" rel="noopener" className="text-xs bg-purple-900/20 hover:bg-purple-900/40 text-purple-200 px-2 py-1 rounded border border-purple-900/30 flex items-center gap-1 transition-colors">
-                                  📷 Zobacz Dowód (Screen)
-                              </a>
-                          )}
-                      </div>
-                  )}
-
+                    ))}
                 </div>
-              ))
+            ) : (
+                <div className="text-center py-12 border-2 border-dashed border-navy-700 rounded-xl">
+                    <p className="text-slate-500">Brak zgłoszeń dla tego numeru. Bądź pierwszy!</p>
+                </div>
             )}
-          </div>
         </div>
-
       </div>
     </main>
   );
