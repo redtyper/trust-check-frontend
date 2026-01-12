@@ -1,26 +1,30 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0A2540;
+  --foreground: #ededed;
 }
 
+/* Konfiguracja Design Systemu dla Tailwind v4 */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-navy-900: #0A2540; /* Royal Navy Blue - Tło */
+  --color-navy-800: #153152; /* Karty */
+  --color-navy-700: #234469; /* Obramowania */
+  
+  --color-crimson: #D92D20;  /* Alert / Scam */
+  --color-teal: #027A48;     /* Success / Zweryfikowano */
+  
+  --color-slate-main: #94a3b8; /* Tekst pomocniczy (rozjaśniony dla trybu dark) */
+  --color-slate-light: #cbd5e1;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas;
+  
+  --background-image-grid-pattern: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23234469' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 body {
-  background: var(--background);
+  background-color: var(--color-navy-900);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }

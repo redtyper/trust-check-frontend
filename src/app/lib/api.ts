@@ -1,39 +1,57 @@
-// src/lib/api.ts
+// Adres backendu na porcie 3001
+const BACKEND_URL = 'http://localhost:3001'; 
 
-const BACKEND_URL = 'http://127.0.0.1:3000';
+export type SearchType = 'NIP' | 'PHONE';
 
+export interface ReportData {
+  query: string;
+  trustScore: number;
+  riskLevel: string;
+  source: string;
+  company?: {
+    name: string;
+    nip: string;
+    vat: string;
+    phones: Array<{ id: string; number: string; trustScore: number }>;
+    address?: string;
+    regDate?: string;
+  };
+  community?: {
+    alerts: number;
+    totalReports: number;
+    latestComments: Array<{
+      date: string;
+      reason: string;
+      comment: string;
+      reportedEmail?: string;
+      facebookLink?: string;
+      screenshotUrl?: string;
+    }>;
+  };
+  error?: string;
+}
 
-// Typy dla TypeScript, żeby nie krzyczał
-type SearchType = 'NIP' | 'PHONE';
-
-export async function checkCompany(query: string, type: SearchType) {
+export async function checkCompany(query: string, type: SearchType): Promise<ReportData | null> {
   try {
     let url = '';
 
     if (type === 'NIP') {
-      // Endpoint dla NIP-ów
-      // UWAGA: Upewnij się, że w backendzie masz endpoint: /verification/company/:nip
-      // Jeśli w backendzie używasz /verification/search/:query, to użyj tego drugiego.
-      // Zakładam wersję ze starym endpointem dla pewności:
-      url = `${BACKEND_URL}/verification/company/${query}`; 
+      // Endpoint search w backendzie obsługuje logikę NIP/Tel, 
+      // ale możemy też uderzać bezpośrednio jeśli wolisz.
+      // Użyjmy uniwersalnego endpointu search, który stworzyliśmy w serwisie:
+      url = `${BACKEND_URL}/verification/search/${query}`;
     } else {
-      // Endpoint dla Telefonów
-      // Ważne: kodujemy "+" (plus) na %2B, żeby nie zepsuł URL-a
       const safeQuery = encodeURIComponent(query);
-      url = `${BACKEND_URL}/verification/phone/${safeQuery}`;
+      url = `${BACKEND_URL}/verification/search/${safeQuery}`;
     }
 
     const res = await fetch(url, {
-      cache: 'no-store', // Next.js cache bypass
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' },
     });
 
     if (!res.ok) {
-      // Jeśli backend zwróci 404 lub 500
-      if (res.status === 404) return null;
-      console.error(`API Error ${res.status}:`, await res.text());
+      console.error(`API Error ${res.status}`);
       return null;
     }
 
@@ -42,4 +60,35 @@ export async function checkCompany(query: string, type: SearchType) {
     console.error("Network Error:", error);
     return null;
   }
+}
+export async function loginUser(email: string, pass: string) {
+    const res = await fetch(`${BACKEND_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass })
+    });
+    if (!res.ok) return { error: 'Błąd logowania' };
+    return await res.json();
+}
+
+export async function registerUser(email: string, pass: string) {
+    const res = await fetch(`${BACKEND_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass })
+    });
+    if (!res.ok) return { error: 'Błąd rejestracji (może email zajęty?)' };
+    return await res.json();
+}
+
+export async function submitReport(reportData: any, token: string) {
+    const res = await fetch(`${BACKEND_URL}/reports`, {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // Przesyłamy token
+        },
+        body: JSON.stringify(reportData)
+    });
+    return res.ok;
 }

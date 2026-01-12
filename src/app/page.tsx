@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { checkCompany } from '@/app/lib/api'; 
 
 export default function Home() {
   const [query, setQuery] = useState('');
   const [placeholder, setPlaceholder] = useState('');
   const [detectedType, setDetectedType] = useState<string | null>(null);
   const router = useRouter();
-
+  const [isSearching, setIsSearching] = useState(false);
   // Animacja Placeholdera
   const placeholders = ["Wpisz numer telefonu...", "Wpisz numer NIP...", "Wklej numer konta..."];
   useEffect(() => {
@@ -53,15 +54,45 @@ export default function Home() {
     else setDetectedType(null);
   }, [query]);
 
-  const handleSearch = (e: React.FormEvent) => {
+   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!detectedType) return;
-    
-    // Prosty routing (rozbuduj wg potrzeb)
-    if (detectedType === 'NIP') router.push(`/report/nip/${query.replace(/[^0-9]/g, '')}`);
-    else if (detectedType === 'PHONE') router.push(`/report/phone/${encodeURIComponent(query)}`);
-    else alert("Wykryto inny typ danych - wdrożenie wkrótce.");
-  };
+    setIsSearching(true);
+
+    try {
+        const cleanQuery = query.replace(/[^a-zA-Z0-9]/g, '');
+        const data = await checkCompany(cleanQuery, detectedType as 'NIP' | 'PHONE');
+
+        // SCENARIUSZ A: Firma (NIP)
+        if (data && data.company && detectedType === 'NIP') {
+             router.push(`/report/nip/${data.company.nip}`);
+             return;
+        }
+
+        // SCENARIUSZ B: Numer Telefonu
+        if (data && detectedType === 'PHONE') {
+             // Sprawdzamy czy numer fizycznie istnieje w bazie
+             // Backend w search() powinien zwracać pole 'exists' lub sprawdzamy po raportach
+             const hasReports = data.community && data.community.totalReports > 0;
+             const isKnown = data.riskLevel !== 'Krytyczny (Nie istnieje)' && data.source !== 'ERROR';
+
+             // Jeśli ma historię LUB backend go zna -> Pokaż raport
+             if (hasReports || isKnown) {
+                 router.push(`/report/phone/${encodeURIComponent(cleanQuery)}`);
+                 return;
+             }
+        }
+
+        // SCENARIUSZ C: Brak w bazie -> Nowe Zgłoszenie
+        router.push(`/report/new?value=${cleanQuery}&type=${detectedType}`);
+
+    } catch (e) {
+        console.error("Search Error", e);
+        router.push(`/report/new?value=${query}&type=${detectedType}`);
+    } finally {
+        // setIsSearching(false); // Opcjonalnie usuń, jeśli router zmienia stronę
+    }
+};
 
   return (
     <main className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-6">
@@ -117,9 +148,9 @@ export default function Home() {
               autoFocus
             />
             
-            <button type="submit" className="bg-teal hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold transition-all">
-              Skanuj
-            </button>
+             <button type="submit" disabled={isSearching} className="bg-teal hover:bg-green-600 text-white px-8 py-3 rounded-lg font-semibold transition-al">
+          {isSearching ? 'Szukam...' : 'Skanuj'}
+      </button>
           </div>
         </form>
 
