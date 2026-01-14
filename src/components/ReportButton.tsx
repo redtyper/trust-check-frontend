@@ -28,6 +28,9 @@ export default function ReportButton({ defaultTargetType, defaultValue }: Report
   const [email, setEmail] = useState('');
   const [fbLink, setFbLink] = useState('');
   const [screenshot, setScreenshot] = useState('');
+  const [scammerName, setScammerName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
+
 
   const handleOpen = () => {
     const token = localStorage.getItem('token');
@@ -55,16 +58,18 @@ export default function ReportButton({ defaultTargetType, defaultValue }: Report
     }
 
     const payload = {
-        targetType: finalType,
-        targetValue: finalValue,
-        rating,
-        reason,
-        comment,
-        // Dodatkowe pola (wyślemy je tylko jeśli tryb to PERSON, backend obsłuży nulle)
-        reportedEmail: (reportMode === 'PERSON' && email) ? email : undefined,
-        facebookLink: (reportMode === 'PERSON' && fbLink) ? fbLink : undefined,
-        screenshotUrl: (reportMode === 'PERSON' && screenshot) ? screenshot : undefined
-    };
+    targetType: finalType,
+    targetValue: defaultValue,
+    rating,
+    reason,
+    comment,
+    reportedEmail: email || undefined,
+    facebookLink: fbLink || undefined,
+    screenshotUrl: screenshot || undefined,
+    scammerName: scammerName || undefined, // <-- NOWE
+    bankAccount: bankAccount || undefined,  // <-- NOWE
+};
+
 
     const success = await submitReport(payload, token);
     setLoading(false);
@@ -136,47 +141,58 @@ export default function ReportButton({ defaultTargetType, defaultValue }: Report
                 </div>
 
                 {/* POLA DLA OSOBY PRYWATNEJ */}
-                {reportMode === 'PERSON' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                         {/* Jeśli jesteśmy na stronie NIP, musimy zapytać o numer telefonu tej osoby */}
-                         {defaultTargetType === 'NIP' && (
-                            <div className="md:col-span-2">
-                                <label className="block text-slate-main text-xs uppercase font-bold mb-2">Numer Telefonu Oszusta *</label>
-                                <input 
-                                    className="w-full bg-navy-900 border border-navy-700 rounded-lg p-3 text-white focus:border-teal outline-none"
-                                    placeholder="np. +48 600 100 200"
-                                    value={personPhone} onChange={e => setPersonPhone(e.target.value)}
-                                />
-                            </div>
-                         )}
+           // ... wewnątrz formularza, w bloku "reportMode === 'PERSON'" ...
 
-                         <div>
-                            <label className="block text-slate-main text-xs uppercase font-bold mb-2">Adres Email</label>
-                            <input 
-                                className="w-full bg-navy-900 border border-navy-700 rounded-lg p-3 text-white focus:border-teal outline-none"
-                                placeholder="email@oszusta.pl"
-                                value={email} onChange={e => setEmail(e.target.value)}
-                            />
-                         </div>
-                         <div>
-                            <label className="block text-slate-main text-xs uppercase font-bold mb-2">Link do profilu (FB/OLX)</label>
-                            <input 
-                                className="w-full bg-navy-900 border border-navy-700 rounded-lg p-3 text-white focus:border-teal outline-none"
-                                placeholder="https://facebook.com/..."
-                                value={fbLink} onChange={e => setFbLink(e.target.value)}
-                            />
-                         </div>
-                         <div className="md:col-span-2">
-                            <label className="block text-slate-main text-xs uppercase font-bold mb-2">Link do screenshota (Dowód)</label>
-                            <input 
-                                className="w-full bg-navy-900 border border-navy-700 rounded-lg p-3 text-white focus:border-teal outline-none font-mono text-sm"
-                                placeholder="https://imgur.com/..."
-                                value={screenshot} onChange={e => setScreenshot(e.target.value)}
-                            />
-                            <p className="text-xs text-slate-500 mt-1">Wklej bezpośredni link do zdjęcia (np. z imgur.com).</p>
-                         </div>
-                    </div>
-                )}
+{reportMode === 'PERSON' && (
+    <div className="space-y-3 pt-2 border-t border-navy-700/50 animate-in fade-in">
+        <p className="text-xs text-blue-400 font-bold">🕵️ DANE OSZUSTA (OPCJONALNE)</p>
+        
+        {/* Imię i Nazwisko */}
+        <div>
+            <label className="block text-xs text-slate-400 mb-1">Imię i Nazwisko</label>
+            <input 
+                className="w-full bg-navy-900 border border-navy-700 rounded p-2 text-sm text-white focus:border-teal outline-none" 
+                placeholder="Np. Jan Kowalski"
+                value={scammerName} 
+                onChange={e => setScammerName(e.target.value)} 
+            />
+        </div>
+
+        {/* Numer Konta */}
+        <div>
+            <label className="block text-xs text-slate-400 mb-1">Numer Konta Bankowego (IBAN)</label>
+            <input 
+                className="w-full bg-navy-900 border border-navy-700 rounded p-2 text-sm text-white font-mono focus:border-teal outline-none" 
+                placeholder="PL61109010140000071219812874"
+                value={bankAccount} 
+                onChange={e => setBankAccount(e.target.value)} 
+            />
+        </div>
+
+        {/* Email */}
+        <div>
+            <label className="block text-xs text-slate-400 mb-1">Email</label>
+            <input 
+                className="w-full bg-navy-900 border border-navy-700 rounded p-2 text-sm text-white" 
+                placeholder="oszust@example.com"
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+            />
+        </div>
+
+        {/* Link do profilu */}
+        <div>
+            <label className="block text-xs text-slate-400 mb-1">Link do Profilu (FB/OLX)</label>
+            <input 
+                className="w-full bg-navy-900 border border-navy-700 rounded p-2 text-sm text-white" 
+                placeholder="https://facebook.com/..."
+                value={fbLink} 
+                onChange={e => setFbLink(e.target.value)} 
+            />
+        </div>
+    </div>
+)}
+
 
                 <div className="border-t border-navy-700 my-4"></div>
 

@@ -14,17 +14,24 @@ const reasonMap: Record<string, string> = {
 const getOsintData = (comments: any[]) => {
   const emails = new Set<string>();
   const fbs = new Set<string>();
+  const names = new Set<string>();
+  const bankAccounts = new Set<string>();
 
   comments?.forEach(c => {
     if (c.reportedEmail) emails.add(c.reportedEmail);
     if (c.facebookLink) fbs.add(c.facebookLink);
+    if (c.scammerName) names.add(c.scammerName);
+    if (c.bankAccount) bankAccounts.add(c.bankAccount);
   });
 
   return {
     emails: Array.from(emails),
-    fbs: Array.from(fbs)
+    fbs: Array.from(fbs),
+    names: Array.from(names),
+    bankAccounts: Array.from(bankAccounts)
   };
 };
+
 
 export default async function PhoneReportPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -93,28 +100,50 @@ export default async function PhoneReportPage(props: { params: Promise<{ id: str
 
           {/* DANE OSINT */}
           {hasOsint && (
-            <div className="bg-navy-900/80 border-t border-navy-700 p-6 md:p-8">
-                <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                    <span className="text-blue-400">🕵️‍♂️</span> Zidentyfikowane Dane (OSINT)
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {osint.emails.length > 0 && (
-                        <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
-                            <span className="text-xs text-slate-500 uppercase font-bold block mb-2">Powiązane Emaile</span>
-                            {osint.emails.map(e => <div key={e} className="font-mono text-teal">{e}</div>)}
-                        </div>
-                    )}
-                    {osint.fbs.length > 0 && (
-                        <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
-                             <span className="text-xs text-slate-500 uppercase font-bold block mb-2">Profile Społecznościowe</span>
-                            {osint.fbs.map(link => (
-                                <a key={link} href={link} target="_blank" className="block text-blue-400 hover:underline truncate">{link}</a>
-                            ))}
-                        </div>
-                    )}
+    <div className="bg-navy-900/80 border-t border-navy-700 p-6 md:p-8">
+        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+            <span className="text-blue-400">🕵️‍♂️</span> Zidentyfikowane Dane (OSINT)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Imiona oszustów */}
+            {osint.names.length > 0 && (
+                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
+                    <span className="text-xs text-slate-500 uppercase font-bold block mb-2">👤 Podejrzane Tożsamości</span>
+                    {osint.names.map((name, i) => <div key={i} className="font-bold text-white">{name}</div>)}
                 </div>
-            </div>
-          )}
+            )}
+
+            {/* Konta bankowe */}
+            {osint.bankAccounts.length > 0 && (
+                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
+                    <span className="text-xs text-slate-500 uppercase font-bold block mb-2">💳 Konta Bankowe</span>
+                    {osint.bankAccounts.map((acc, i) => (
+                        <div key={i} className="font-mono text-crimson text-sm break-all">{acc}</div>
+                    ))}
+                </div>
+            )}
+
+            {/* Emaile */}
+            {osint.emails.length > 0 && (
+                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
+                    <span className="text-xs text-slate-500 uppercase font-bold block mb-2">✉️ Adresy Email</span>
+                    {osint.emails.map(e => <div key={e} className="font-mono text-teal text-sm">{e}</div>)}
+                </div>
+            )}
+
+            {/* Profile */}
+            {osint.fbs.length > 0 && (
+                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
+                     <span className="text-xs text-slate-500 uppercase font-bold block mb-2">🔗 Profile Społecznościowe</span>
+                    {osint.fbs.map(link => (
+                        <a key={link} href={link} target="_blank" className="block text-blue-400 hover:underline truncate text-sm">{link}</a>
+                    ))}
+                </div>
+            )}
+        </div>
+    </div>
+)}
 
           {/* ACTIONS */}
           <div className="bg-navy-900/30 p-4 flex justify-end border-t border-navy-700">
