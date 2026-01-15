@@ -72,11 +72,39 @@ export default function CommentsList({ comments }: { comments: any[] }) {
               </div>
             )}
             
-            {/* OSINT INFO */}
-            {(c.reportedEmail || c.facebookLink) && (
-                 <div className="mt-4 flex flex-wrap gap-2">
-                    {c.reportedEmail && <span className="text-xs text-teal bg-teal/10 px-2 py-1 rounded border border-teal/20">{c.reportedEmail}</span>}
-                    {c.facebookLink && <a href={c.facebookLink} target="_blank" className="text-xs text-blue-400 bg-blue-400/10 px-2 py-1 rounded border border-blue-400/20 hover:bg-blue-400/20">Profil FB</a>}
+           {/* OSINT INFO - POPRAWIONE WYŚWIETLANIE */}
+            {(c.reportedEmail || c.facebookLink || c.phoneNumber || c.bankAccount) && (
+                 <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-navy-800/50">
+                    
+                    {/* Numer Telefonu */}
+                    {c.phoneNumber && (
+                        <div className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 rounded px-2 py-1">
+                            <span className="text-sm">📞</span>
+                            <span className="text-xs font-mono text-teal-400 font-bold">{c.phoneNumber}</span>
+                        </div>
+                    )}
+
+                    {/* Konto Bankowe */}
+                    {c.bankAccount && (
+                        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1">
+                            <span className="text-sm">🏦</span>
+                            <span className="text-xs font-mono text-yellow-500 font-bold">{c.bankAccount}</span>
+                        </div>
+                    )}
+
+                    {/* Email */}
+                    {c.reportedEmail && (
+                        <span className="text-xs text-blue-400 bg-blue-400/10 px-2 py-1 rounded border border-blue-400/20 flex items-center gap-1">
+                            ✉️ {c.reportedEmail}
+                        </span>
+                    )}
+
+                    {/* Link */}
+                    {c.facebookLink && (
+                        <a href={c.facebookLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 bg-indigo-400/10 px-2 py-1 rounded border border-indigo-400/20 hover:bg-indigo-400/20 flex items-center gap-1 transition-colors">
+                            🔗 Profil
+                        </a>
+                    )}
                  </div>
             )}
 

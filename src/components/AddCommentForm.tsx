@@ -14,17 +14,16 @@ export default function AddCommentForm({ targetType, targetValue }: Props) {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Pola podstawowe
+  // Pola
   const [reason, setReason] = useState('SCAM');
   const [rating, setRating] = useState(1);
   const [comment, setComment] = useState('');
   const [file, setFile] = useState<File | null>(null);
   
   // OSINT - PEŁNE DANE
-  const [phoneNumber, setPhoneNumber] = useState(''); // BRAKUJĄCE POLE
   const [email, setEmail] = useState('');
   const [fbLink, setFbLink] = useState('');
-  const [bankAccount, setBankAccount] = useState('');
+  const [bankAccount, setBankAccount] = useState(''); // Nowe pole
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +51,9 @@ export default function AddCommentForm({ targetType, targetValue }: Props) {
         rating,
         reason,
         comment,
-        // Przekazujemy wszystkie pola OSINT
-        phoneNumber: phoneNumber || undefined,
         reportedEmail: email || undefined,
         facebookLink: fbLink || undefined,
-        bankAccount: bankAccount || undefined,
+        bankAccount: bankAccount || undefined, // Dodane do payloadu
         screenshotPath,
       };
 
@@ -66,7 +63,6 @@ export default function AddCommentForm({ targetType, targetValue }: Props) {
         // Reset formularza
         setComment('');
         setFile(null);
-        setPhoneNumber('');
         setEmail('');
         setFbLink('');
         setBankAccount('');
@@ -131,19 +127,12 @@ export default function AddCommentForm({ targetType, targetValue }: Props) {
             </div>
          </div>
 
-         {/* OSINT (PEŁNE DANE + TELEFON) */}
+         {/* OSINT (TERAZ PEŁNY) */}
          <div className="bg-navy-900/30 p-4 rounded-lg border border-navy-700/50 space-y-4">
              <h4 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
                  <span>🕵️</span> Dodatkowe dane oszusta (OSINT)
              </h4>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {/* NUMER TELEFONU */}
-                 <div className="md:col-span-2">
-                    <label className="block text-slate-main text-xs mb-1 font-bold text-teal">Numer Telefonu</label>
-                    <input type="text" placeholder="Np. 500 600 700" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)}
-                           className="w-full bg-navy-900 border border-navy-600 rounded p-3 text-white placeholder-slate-600 focus:ring-2 focus:ring-teal transition-all font-mono" />
-                 </div>
-
                  <div>
                     <label className="block text-slate-main text-xs mb-1">Adres E-mail</label>
                     <input type="text" placeholder="email@oszusta.pl" value={email} onChange={e => setEmail(e.target.value)}

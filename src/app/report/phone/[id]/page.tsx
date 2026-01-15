@@ -27,34 +27,28 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
   const borderColor = isSafe ? 'border-teal/30' : isCritical ? 'border-crimson/30' : 'border-orange-500/30';
   const statusBg = isSafe ? 'bg-teal/20 text-teal' : isCritical ? 'bg-crimson/20 text-crimson' : 'bg-orange-500/20 text-orange-500';
 
-  // --- POPRAWIONA AGREGACJA DANYCH OSINT ---
-  // Szukamy pierwszego wystąpienia każdego pola w historii komentarzy (od najnowszego)
   const comments = data.community?.latestComments || [];
 
-  const displayEmail = comments.find(c => c.reportedEmail)?.reportedEmail;
-  const displayFb = comments.find(c => c.facebookLink)?.facebookLink;
-  const displayBank = comments.find(c => c.bankAccount)?.bankAccount;
-  
-  // Telefon:
-  // 1. Jeśli to strona telefonu (isPhone), to głównym telefonem jest query.
-  // 2. Jeśli to strona osoby (query=Jan), szukamy telefonu w komentarzach LUB w relacji company.
-  let displayPhone = null;
-  
-  if (data.isPhone) {
-      displayPhone = data.query; // Główny numer strony
-  } else {
-      // Szukamy w komentarzach
-      displayPhone = comments.find(c => c.phoneNumber)?.phoneNumber;
-      // Lub w firmie
-      if (!displayPhone && data.company?.phones?.[0]) {
-          displayPhone = data.company.phones[0].number;
-      }
-  }
-  
-  // Jeśli mamy numer w komentarzach inny niż główny (np. zgłoszono alternatywny numer oszusta),
-  // możemy go wyświetlić jako dodatkowy, ale na razie skupmy się na wyświetleniu czegokolwiek.
+// TELEFONY – wszystkie unikalne z komentarzy
+const osintPhones = Array.from(
+  new Set(
+    comments
+      .map((c) => c.phoneNumber)
+      .filter((p): p is string => !!p)
+  )
+);
 
-  const hasOsint = displayPhone || displayEmail || displayFb || displayBank;
+// Jeśli to strona konkretnego numeru i nie ma go w OSINT, dodaj także główny numer strony
+if (data.isPhone && !osintPhones.includes(data.query)) {
+  osintPhones.unshift(data.query);
+}
+
+// POZOSTAŁE POLA – na razie po jednym (pierwsze wystąpienie)
+const displayEmail = comments.find((c) => c.reportedEmail)?.reportedEmail;
+const displayFb = comments.find((c) => c.facebookLink)?.facebookLink;
+const displayBank = comments.find((c) => c.bankAccount)?.bankAccount;
+
+const hasOsint = osintPhones.length > 0 || displayEmail || displayFb || displayBank;
 
   return (
     <div className="min-h-screen bg-navy-900 p-4 md:p-8 font-sans text-slate-main">
@@ -109,16 +103,28 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
                           
-                          {/* TELEFON */}
-                          {displayPhone && (
-                              <div className="flex items-start gap-3">
-                                  <div className="w-8 h-8 rounded-lg bg-navy-800 flex items-center justify-center text-teal">📞</div>
-                                  <div>
-                                      <p className="text-xs text-slate-500 uppercase font-bold">Telefon</p>
-                                      <p className="text-white font-mono text-sm">{displayPhone}</p>
-                                  </div>
-                              </div>
-                          )}
+                         {/* TELEFONY */}
+{osintPhones.length > 0 && (
+  <div className="flex items-start gap-3">
+    <div className="w-8 h-8 rounded-lg bg-navy-800 flex items-center justify-center text-teal">📞</div>
+    <div>
+      <p className="text-xs text-slate-500 uppercase font-bold">
+        Numery Telefonów
+      </p>
+      <div className="space-y-1">
+        {osintPhones.map((phone) => (
+          <p
+            key={phone}
+            className="text-white font-mono text-sm"
+          >
+            {phone}
+          </p>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
 
                           {/* EMAIL */}
                           {displayEmail && (
