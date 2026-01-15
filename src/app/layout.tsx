@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google"; // Import fontów
+import { Sora, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-// Konfiguracja fontów
-const inter = Inter({ 
+const sora = Sora({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-body",
   display: "swap",
 });
 
-const jetbrains = JetBrains_Mono({ 
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-code",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "Verify360 - Intelligence Platform",
-  description: "Zaawansowana weryfikacja podmiotów gospodarczych i cyberbezpieczeństwo.",
+  description: "Zaawansowana weryfikacja podmiotow gospodarczych i cyberbezpieczenstwo.",
 };
 
 export default function RootLayout({
@@ -27,7 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pl">
-      <body className={`${inter.variable} ${jetbrains.variable} bg-navy-900 text-white antialiased`}>
+      <body
+        className={`${sora.variable} ${spaceGrotesk.variable} ${jetbrains.variable} bg-navy-900 text-slate-light antialiased`}
+      >
         {children}
       </body>
     </html>

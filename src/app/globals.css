@@ -1,30 +1,99 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0A2540;
-  --foreground: #ededed;
+  color-scheme: dark;
+  --background: #0b0f14;
+  --foreground: #e7edf3;
 }
 
-/* Konfiguracja Design Systemu dla Tailwind v4 */
 @theme inline {
-  --color-navy-900: #0A2540; /* Royal Navy Blue - Tło */
-  --color-navy-800: #153152; /* Karty */
-  --color-navy-700: #234469; /* Obramowania */
+  --color-navy-900: #0b0f14;
+  --color-navy-800: #121926;
+  --color-navy-700: #1f2b3a;
   
-  --color-crimson: #D92D20;  /* Alert / Scam */
-  --color-teal: #027A48;     /* Success / Zweryfikowano */
+  --color-crimson: #f0433a;
+  --color-teal: #2bbf9f;
+  --color-amber: #f59e0b;
   
-  --color-slate-main: #94a3b8; /* Tekst pomocniczy (rozjaśniony dla trybu dark) */
-  --color-slate-light: #cbd5e1;
+  --color-slate-main: #9aa7b4;
+  --color-slate-light: #e3e9ef;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
-  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-heading), var(--font-body), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-code), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
-  --background-image-grid-pattern: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23234469' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+  --background-image-grid-pattern: url("data:image/svg+xml,%3Csvg width='56' height='56' viewBox='0 0 56 56' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%231f2b3a' fill-opacity='0.28' fill-rule='evenodd'%3E%3Cpath d='M0 0h56v1H0zM0 0h1v56H0z'/%3E%3Cpath d='M28 0h1v56h-1zM0 28h56v1H0z'/%3E%3C/g%3E%3C/svg%3E");
+  --background-image-noise: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.18'/%3E%3C/svg%3E");
 }
 
 body {
   background-color: var(--color-navy-900);
   color: var(--foreground);
   font-family: var(--font-sans);
+  min-height: 100%;
+}
+
+::selection {
+  background: rgba(245, 158, 11, 0.35);
+  color: var(--foreground);
+}
+
+.bg-grid-pattern {
+  background-image: var(--background-image-grid-pattern);
+}
+
+.bg-noise {
+  background-image: var(--background-image-noise);
+}
+
+.surface {
+  background: linear-gradient(180deg, rgba(18, 25, 38, 0.95), rgba(18, 25, 38, 0.72));
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+}
+
+.surface-soft {
+  background: rgba(18, 25, 38, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.text-display {
+  font-family: var(--font-display);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.8s ease both;
+}
+
+.stagger > * {
+  opacity: 0;
+  animation: rise-in 0.85s ease both;
+}
+
+.stagger > *:nth-child(1) { animation-delay: 0.06s; }
+.stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.stagger > *:nth-child(3) { animation-delay: 0.18s; }
+.stagger > *:nth-child(4) { animation-delay: 0.24s; }
+.stagger > *:nth-child(5) { animation-delay: 0.3s; }
+.stagger > *:nth-child(6) { animation-delay: 0.36s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .stagger > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }

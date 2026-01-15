@@ -1,113 +1,113 @@
 'use client';
 import { useState } from 'react';
 
-const BACKEND_URL = 'http://localhost:3001/'; 
+const BACKEND_URL = 'http://localhost:3001';
 
 export default function CommentsList({ comments }: { comments: any[] }) {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const buildScreenshotSrc = (path?: string, url?: string) => {
+    if (url) return url;
+    if (!path) return '';
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${BACKEND_URL}${normalized}`;
+  };
 
   if (!comments || comments.length === 0) {
-      return (
-        <div className="text-center py-12 border-2 border-dashed border-navy-700 rounded-xl">
-            <p className="text-slate-500">Brak zgłoszeń. Bądź pierwszy!</p>
-        </div>
-      );
+    return (
+      <div className="rounded-3xl border border-dashed border-navy-700 py-12 text-center text-slate-main">
+        Brak zgloszen. Badz pierwszy!
+      </div>
+    );
   }
 
   return (
     <>
-      {/* LIGHTBOX */}
       {lightboxSrc && (
-        <div 
-          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-pointer"
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-6"
           onClick={() => setLightboxSrc(null)}
         >
-          <img src={lightboxSrc} alt="Dowód" className="max-w-full max-h-screen rounded shadow-2xl" />
-          <button className="absolute top-4 right-4 text-white text-2xl font-bold p-2">✕</button>
+          <img src={lightboxSrc} alt="Dowod" className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl" />
+          <button className="absolute right-6 top-6 rounded-full border border-white/30 px-3 py-1 text-xs uppercase tracking-widest text-white">
+            Zamknij
+          </button>
         </div>
       )}
 
-      {/* LISTA KOMENTARZY */}
       <div className="grid gap-6">
         {comments.map((c, idx) => (
-          <div key={idx} className="bg-navy-900/50 p-6 rounded-xl border border-navy-700 hover:border-navy-600 transition-colors shadow-lg">
-            
-            {/* HEADER */}
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex flex-col gap-1">
-                 <span className="font-mono text-xs text-slate-500">{new Date(c.date).toLocaleDateString()}</span>
-                 <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wide ${
-                        c.rating <= 2 ? 'bg-crimson/20 text-crimson' : 'bg-teal/20 text-teal'
-                    }`}>
-                        {c.rating <= 2 ? 'NEGATYWNY' : 'POZYTYWNY'}
-                    </span>
-                    <span className="text-sm font-bold text-white">{c.reason}</span>
-                 </div>
+          <div
+            key={idx}
+            className="rounded-3xl border border-navy-700 bg-navy-900/60 p-6 shadow-xl transition hover:border-slate-main/40"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-xs uppercase tracking-widest text-slate-main">
+                  {new Date(c.date).toLocaleDateString()}
+                </span>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-[10px] uppercase tracking-widest ${
+                      c.rating <= 2 ? 'bg-crimson/15 text-crimson' : 'bg-teal/15 text-teal'
+                    }`}
+                  >
+                    {c.rating <= 2 ? 'Negatywny' : 'Pozytywny'}
+                  </span>
+                  <span className="text-sm font-semibold text-white">{c.reason}</span>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-navy-700 bg-navy-900/70 px-3 py-2 text-xs text-slate-main">
+                Ocena: <span className="text-white">{c.rating}</span>
               </div>
             </div>
-            
-            {/* TREŚĆ */}
-            <p className="text-slate-300 text-sm leading-relaxed mb-4">
-              {c.comment}
-            </p>
 
-            {/* ZDJĘCIE (JEŚLI JEST) */}
+            <p className="mt-4 text-sm leading-relaxed text-slate-light">{c.comment}</p>
+
             {(c.screenshotPath || c.screenshotUrl) && (
-              <div className="mt-4 pt-4 border-t border-navy-800">
-                 <p className="text-[10px] text-slate-500 mb-2 font-bold uppercase tracking-wider">Załączony dowód</p>
-                 <div 
-                   className="relative group w-32 h-32 overflow-hidden rounded-lg border border-navy-600 cursor-zoom-in bg-navy-950"
-                   onClick={() => setLightboxSrc(c.screenshotUrl || `${BACKEND_URL}${c.screenshotPath}`)}
-                 >
-                   <img 
-                     src={c.screenshotUrl || `${BACKEND_URL}${c.screenshotPath}`} 
-                     alt="Screenshot" 
-                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300 opacity-90 group-hover:opacity-100"
-                   />
-                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <span className="text-white text-xs font-bold">POWIĘKSZ</span>
-                   </div>
-                 </div>
+              <div className="mt-5 border-t border-navy-800 pt-5">
+                <p className="text-[10px] uppercase tracking-widest text-slate-main">Zalaczony dowod</p>
+                <div
+                  className="relative mt-3 h-32 w-32 cursor-zoom-in overflow-hidden rounded-2xl border border-navy-700 bg-navy-900"
+                  onClick={() => setLightboxSrc(buildScreenshotSrc(c.screenshotPath, c.screenshotUrl))}
+                >
+                  <img
+                    src={buildScreenshotSrc(c.screenshotPath, c.screenshotUrl)}
+                    alt="Screenshot"
+                    className="h-full w-full object-cover transition duration-300 hover:scale-110"
+                  />
+                </div>
               </div>
             )}
-            
-           {/* OSINT INFO - POPRAWIONE WYŚWIETLANIE */}
+
             {(c.reportedEmail || c.facebookLink || c.phoneNumber || c.bankAccount) && (
-                 <div className="mt-4 flex flex-wrap gap-2 pt-3 border-t border-navy-800/50">
-                    
-                    {/* Numer Telefonu */}
-                    {c.phoneNumber && (
-                        <div className="flex items-center gap-2 bg-teal-500/10 border border-teal-500/20 rounded px-2 py-1">
-                            <span className="text-sm">📞</span>
-                            <span className="text-xs font-mono text-teal-400 font-bold">{c.phoneNumber}</span>
-                        </div>
-                    )}
-
-                    {/* Konto Bankowe */}
-                    {c.bankAccount && (
-                        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded px-2 py-1">
-                            <span className="text-sm">🏦</span>
-                            <span className="text-xs font-mono text-yellow-500 font-bold">{c.bankAccount}</span>
-                        </div>
-                    )}
-
-                    {/* Email */}
-                    {c.reportedEmail && (
-                        <span className="text-xs text-blue-400 bg-blue-400/10 px-2 py-1 rounded border border-blue-400/20 flex items-center gap-1">
-                            ✉️ {c.reportedEmail}
-                        </span>
-                    )}
-
-                    {/* Link */}
-                    {c.facebookLink && (
-                        <a href={c.facebookLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 bg-indigo-400/10 px-2 py-1 rounded border border-indigo-400/20 hover:bg-indigo-400/20 flex items-center gap-1 transition-colors">
-                            🔗 Profil
-                        </a>
-                    )}
-                 </div>
+              <div className="mt-5 flex flex-wrap gap-2 border-t border-navy-800/60 pt-4">
+                {c.phoneNumber && (
+                  <div className="rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-xs font-mono text-teal">
+                    {c.phoneNumber}
+                  </div>
+                )}
+                {c.bankAccount && (
+                  <div className="rounded-full border border-amber/30 bg-amber/10 px-3 py-1 text-xs font-mono text-amber">
+                    {c.bankAccount}
+                  </div>
+                )}
+                {c.reportedEmail && (
+                  <span className="rounded-full border border-slate-main/30 bg-navy-900/60 px-3 py-1 text-xs text-slate-light">
+                    {c.reportedEmail}
+                  </span>
+                )}
+                {c.facebookLink && (
+                  <a
+                    href={c.facebookLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-slate-main/30 bg-navy-900/60 px-3 py-1 text-xs text-slate-light transition hover:border-amber/50 hover:text-white"
+                  >
+                    Profil
+                  </a>
+                )}
+              </div>
             )}
-
           </div>
         ))}
       </div>

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { loginUser, registerUser } from '../lib/api';
 
@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -18,57 +18,77 @@ export default function LoginPage() {
     const res = await action(email, password);
 
     if (res.error) {
-        setError(res.error);
+      setError(res.error);
     } else {
-        // SUKCES: Zapisz token
-        localStorage.setItem('token', res.access_token);
-        localStorage.setItem('user', JSON.stringify(res.user));
-        // Przekieruj na stronę główną (lub tam skąd przyszedł)
-        router.push('/');
+      localStorage.setItem('token', res.access_token);
+      localStorage.setItem('user', JSON.stringify(res.user));
+      router.push('/');
     }
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 flex items-center justify-center p-4">
-      <div className="bg-navy-800 p-8 rounded-2xl border border-navy-700 shadow-2xl w-full max-w-md">
-        <h1 className="text-2xl font-bold text-white mb-6 text-center">
-            {isRegister ? 'Dołącz do Verify360' : 'Zaloguj się'}
-        </h1>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label className="block text-slate-main text-sm mb-1">Email</label>
-                <input 
-                    type="email" required
-                    className="w-full bg-navy-900 border border-navy-700 rounded p-3 text-white focus:border-teal outline-none"
-                    value={email} onChange={e => setEmail(e.target.value)}
-                />
-            </div>
-            <div>
-                <label className="block text-slate-main text-sm mb-1">Hasło</label>
-                <input 
-                    type="password" required
-                    className="w-full bg-navy-900 border border-navy-700 rounded p-3 text-white focus:border-teal outline-none"
-                    value={password} onChange={e => setPassword(e.target.value)}
-                />
-            </div>
-            
-            {error && <div className="text-crimson text-sm">{error}</div>}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-navy-900 px-6 py-16">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-24 right-[-10%] h-[320px] w-[320px] rounded-full bg-amber/20 blur-[120px]" />
+        <div className="absolute -bottom-32 left-[-5%] h-[360px] w-[360px] rounded-full bg-teal/20 blur-[140px]" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-40" />
+        <div className="absolute inset-0 bg-noise opacity-40" />
+      </div>
 
-            <button type="submit" className="w-full bg-teal hover:bg-green-700 text-white font-bold py-3 rounded transition-colors">
-                {isRegister ? 'Zarejestruj się' : 'Zaloguj się'}
-            </button>
+      <div className="relative z-10 w-full max-w-md space-y-8 rounded-3xl p-8 surface">
+        <div className="text-center space-y-2">
+          <div className="text-xs uppercase tracking-[0.3em] text-slate-main">TrustCheck Access</div>
+          <h1 className="text-3xl text-display text-white">
+            {isRegister ? 'Dolacz do TrustCheck' : 'Zaloguj sie'}
+          </h1>
+          <p className="text-sm text-slate-main">
+            {isRegister
+              ? 'Tworz konto, aby dodawac zgloszenia i alerty.'
+              : 'Wroc do raportow i zarzadzaj alertami.'}
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-slate-main">Email</label>
+            <input
+              type="email"
+              required
+              className="mt-2 w-full rounded-2xl border border-navy-700 bg-navy-900/70 px-4 py-3 text-white outline-none transition focus:border-amber/60"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-slate-main">Haslo</label>
+            <input
+              type="password"
+              required
+              className="mt-2 w-full rounded-2xl border border-navy-700 bg-navy-900/70 px-4 py-3 text-white outline-none transition focus:border-amber/60"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          {error && <div className="rounded-2xl border border-crimson/40 bg-crimson/10 px-4 py-3 text-sm text-crimson">{error}</div>}
+
+          <button
+            type="submit"
+            className="w-full rounded-2xl bg-amber py-3 text-sm font-bold uppercase tracking-widest text-navy-900 transition hover:-translate-y-0.5"
+          >
+            {isRegister ? 'Zarejestruj konto' : 'Zaloguj sie'}
+          </button>
         </form>
 
-        <p className="mt-6 text-center text-slate-main text-sm">
-            {isRegister ? 'Masz już konto?' : 'Nie masz konta?'}
-            <button 
-                onClick={() => setIsRegister(!isRegister)}
-                className="ml-2 text-blue-400 hover:text-white underline"
-            >
-                {isRegister ? 'Zaloguj się' : 'Zarejestruj się'}
-            </button>
-        </p>
+        <div className="text-center text-sm text-slate-main">
+          {isRegister ? 'Masz juz konto?' : 'Nie masz konta?'}
+          <button
+            onClick={() => setIsRegister(!isRegister)}
+            className="ml-2 text-amber underline underline-offset-4 transition hover:text-amber/80"
+          >
+            {isRegister ? 'Zaloguj sie' : 'Zarejestruj sie'}
+          </button>
+        </div>
       </div>
     </div>
   );

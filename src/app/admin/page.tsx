@@ -1,84 +1,266 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-const BACKEND_URL = 'http://127.0.0.1:3000';
+const BACKEND_URL = 'http://localhost:3001';
+
+type PersonRow = {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  bankAccount?: string | null;
+  trustScore?: number | null;
+  riskLevel?: string | null;
+  reportsCount?: number;
+  createdAt?: string;
+};
 
 export default function AdminDashboard() {
   const [companies, setCompanies] = useState<any[]>([]);
+  const [people, setPeople] = useState<PersonRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'companies' | 'people'>('companies');
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/verification/admin/companies`)
-      .then(res => res.json())
-      .then(data => {
-        setCompanies(data);
-        setLoading(false);
+    Promise.all([
+      fetch(`${BACKEND_URL}/verification/admin/companies`).then((res) => res.json()),
+      fetch(`${BACKEND_URL}/verification/admin/persons`).then((res) => res.json()),
+    ])
+      .then(([companiesRes, personsRes]) => {
+        setCompanies(companiesRes);
+        setPeople(
+          (personsRes || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            email: p.email,
+            phone: p.phone,
+            bankAccount: p.bankAccount,
+            trustScore: p.trustScore,
+            riskLevel: p.riskLevel,
+            reportsCount: p._count?.reports,
+            createdAt: p.createdAt,
+          }))
+        );
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
-        setLoading(false);
-      });
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="min-h-screen bg-gray-900 text-white p-8">Ładowanie...</div>;
+  const highRiskCount = companies.filter((c) =>
+    /(wysoki|krytyczny|niebezpieczny)/i.test((c.riskLevel || '').toLowerCase())
+  ).length;
+  const activeVatCount = companies.filter((c) => c.statusVat === 'Czynny').length;
+  const latestUpdate = companies[0]?.updatedAt;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050608] text-white">
+        <div className="text-sm uppercase tracking-[0.3em] text-[#9fa6b4]">Trawienie danych...</div>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-blue-400">Panel Administratora</h1>
-            <p className="text-gray-400 text-sm mt-1">Zarządzanie bazą firm</p>
-          </div>
-          <Link href="/" className="text-gray-400 hover:text-white border border-gray-600 px-4 py-2 rounded">
-            Wyjdź
-          </Link>
-        </div>
+    <main className="min-h-screen bg-[#050608] text-[#f3f4f6]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(198,161,75,0.18),_transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-20" />
 
-        <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-xl">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-900 text-gray-400 uppercase text-xs tracking-wider">
-              <tr>
-                <th className="p-4 border-b border-gray-700">NIP</th>
-                <th className="p-4 border-b border-gray-700">Nazwa Firmy</th>
-                <th className="p-4 border-b border-gray-700">Status VAT</th>
-                <th className="p-4 border-b border-gray-700">Ryzyko</th>
-                <th className="p-4 border-b border-gray-700 text-right">Akcje</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {companies.map((company) => (
-                <tr key={company.nip} className="hover:bg-gray-700/50 transition-colors group">
-                  <td className="p-4 font-mono text-blue-300 font-bold">{company.nip}</td>
-                  <td className="p-4 font-medium text-gray-200">{company.name}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${company.statusVat === 'Czynny' ? 'bg-green-900/50 text-green-400 border border-green-800' : 'bg-red-900/50 text-red-400 border border-red-800'}`}>
-                      {company.statusVat || 'Nieznany'}
-                    </span>
-                  </td>
-                  <td className="p-4 text-sm text-gray-300">{company.riskLevel}</td>
-                  <td className="p-4 text-right">
-                    <Link 
-                      href={`/admin/edit/${company.nip}`}
-                      className="inline-block bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm font-bold transition-colors shadow-lg shadow-blue-900/20"
-                    >
-                      Edytuj
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          
-          {companies.length === 0 && (
-            <div className="p-12 text-center text-gray-500 flex flex-col items-center">
-              <svg className="w-12 h-12 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-              <p>Brak firm w bazie danych.</p>
-              <p className="text-sm mt-2">Wyszukaj firmę na stronie głównej, aby dodać ją do bazy.</p>
+      <div className="relative mx-auto max-w-6xl px-6 py-10 space-y-10">
+        <section className="rounded-[32px] border border-[#1b1f24] bg-[#0b0d10] p-8 shadow-[0_30px_60px_rgba(0,0,0,0.6)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.4em] text-[#b5bac5]">Panel administratora</div>
+              <h1 className="text-3xl font-semibold text-white">Zgłoszenia: firmy i osoby</h1>
+              <p className="mt-2 text-sm text-[#9fa6b4]">
+                Oddzielny widok dla firm (NIP) i osób/telefonów. Edycja szczegółów firmy/osoby dostępna z poziomu listy.
+              </p>
+            </div>
+            <Link
+              href="/"
+              className="rounded-full border border-[#353841] px-4 py-2 text-xs uppercase tracking-[0.3em] text-[#9fa6b4] transition hover:border-[#c6a14b] hover:text-white"
+            >
+              Wyjdz
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {[
+              { label: 'Łącznie firm', value: companies.length },
+              { label: 'Ryzyko wysokie', value: highRiskCount },
+              { label: 'VAT czynny', value: activeVatCount },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-[#1f2328] bg-[#080a0c] p-4 text-sm">
+                <div className="text-[11px] uppercase tracking-[0.3em] text-[#72767f]">{stat.label}</div>
+                <div className="mt-2 text-2xl font-semibold text-white">{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 text-xs uppercase tracking-[0.4em] text-[#8f949c]">
+            <span>Ostatnia aktualizacja: {latestUpdate ? new Date(latestUpdate).toLocaleString() : 'brak danych'}</span>
+            <span>Premium access only</span>
+          </div>
+        </section>
+
+        <section className="rounded-[32px] border border-[#1b1f24] bg-[#0b0d10] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex gap-2 rounded-full border border-[#1f2328] bg-[#0f1114] p-1 text-xs uppercase tracking-[0.3em] text-[#8f949c]">
+              <button
+                onClick={() => setActiveTab('companies')}
+                className={`rounded-full px-4 py-2 transition ${
+                  activeTab === 'companies' ? 'bg-[#c6a14b] text-[#0b0c0d]' : 'hover:text-white'
+                }`}
+              >
+                Firmy (NIP)
+              </button>
+              <button
+                onClick={() => setActiveTab('people')}
+                className={`rounded-full px-4 py-2 transition ${
+                  activeTab === 'people' ? 'bg-[#4bb08a] text-[#0b0c0d]' : 'hover:text-white'
+                }`}
+              >
+                Osoby / Telefony
+              </button>
+            </div>
+            <span className="text-[11px] uppercase tracking-[0.3em] text-[#8f949c]">
+              Dane zgodne z backendem (osoby/telefony z bazy)
+            </span>
+          </div>
+
+          {activeTab === 'companies' ? (
+            <div className="mt-4 overflow-hidden rounded-3xl border border-[#1f2328]">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-[#0e1015] text-[11px] uppercase tracking-[0.3em] text-[#8f949c]">
+                  <tr>
+                    <th className="p-4 text-left">NIP</th>
+                    <th className="p-4 text-left">Nazwa</th>
+                    <th className="p-4 text-left">Trust</th>
+                    <th className="p-4 text-left">Status VAT</th>
+                    <th className="p-4 text-left">Ryzyko</th>
+                    <th className="p-4 text-right">Akcje</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f2328]">
+                  {companies.map((company) => (
+                    <tr key={company.nip} className="border-b border-[#101214] hover:bg-[#13171c] transition">
+                      <td className="p-4 font-mono text-[#f3f4f6]">{company.nip}</td>
+                      <td className="p-4 text-[#d6dce4]">{company.name}</td>
+                      <td className="p-4">
+                        <span className="rounded-full border border-[#353841] bg-[#0f1114] px-3 py-1 text-[11px] font-semibold text-[#c6a14b]">
+                          {company.trustScore ?? '—'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.3em] ${
+                            company.statusVat === 'Czynny'
+                              ? 'border-[#4bb08a]/40 text-[#4bb08a] bg-[#112520]'
+                              : 'border-[#d96a5b]/40 text-[#d96a5b] bg-[#2a1512]'
+                          }`}
+                        >
+                          {company.statusVat || 'Nieznany'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="rounded-full border border-[#353841] bg-[#101214] px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-[#d6dce4]">
+                          {company.riskLevel || 'Brak danych'}
+                        </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <Link
+                          href={`/admin/edit/${company.nip}`}
+                          className="inline-flex rounded-full border border-[#353841] bg-[#c6a14b]/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#c6a14b]"
+                        >
+                          Edytuj
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {companies.length === 0 && (
+                <div className="p-10 text-center text-sm text-[#8f949c]">Brak firm w bazie.</div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-4 overflow-hidden rounded-3xl border border-[#1f2328]">
+              <table className="w-full border-collapse text-sm">
+                <thead className="bg-[#0e1015] text-[11px] uppercase tracking-[0.3em] text-[#8f949c]">
+                  <tr>
+                    <th className="p-4 text-left">Osoba</th>
+                    <th className="p-4 text-left">Trust</th>
+                    <th className="p-4 text-left">Ryzyko</th>
+                    <th className="p-4 text-left">Telefon</th>
+                    <th className="p-4 text-left">Konto</th>
+                    <th className="p-4 text-left">Zgl.</th>
+                    <th className="p-4 text-right">Akcje</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f2328]">
+                  {people.map((p) => (
+                    <tr key={p.id} className="border-b border-[#101214] hover:bg-[#13171c] transition">
+                      <td className="p-4 text-[#d6dce4]">{p.name}</td>
+                      <td className="p-4">
+                        <span className="rounded-full border border-[#353841] bg-[#0f1114] px-3 py-1 text-[11px] font-semibold text-[#c6a14b]">
+                          {p.trustScore ?? '—'}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className="rounded-full border border-[#353841] bg-[#101214] px-3 py-1 text-[11px] uppercase tracking-[0.3em] text-[#d6dce4]">
+                          {p.riskLevel || 'Brak danych'}
+                        </span>
+                      </td>
+                      <td className="p-4 font-mono text-[#c6a14b]">{p.phone || '—'}</td>
+                      <td className="p-4 font-mono text-[#8f949c]">{p.bankAccount || '—'}</td>
+                      <td className="p-4 text-[#8f949c]">{p.reportsCount ?? '—'}</td>
+                      <td className="p-4 text-right">
+                        <Link
+                          href={`/admin/person/${p.id}`}
+                          className="inline-flex rounded-full border border-[#353841] bg-[#4bb08a]/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-[#4bb08a]"
+                        >
+                          Edytuj
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {people.length === 0 && (
+                <div className="p-10 text-center text-sm text-[#8f949c]">
+                  Brak danych osób (backend udostępnia listę persons).
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </section>
+
+        <section className="rounded-[32px] border border-[#1b1f24] bg-[#0b0d10] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+          <div className="text-xs uppercase tracking-[0.35em] text-[#8f949c]">Narracja premium</div>
+          <h2 className="mt-3 text-2xl text-white">Opowiedz o kazdej firmie</h2>
+          <p className="mt-3 text-sm text-[#b0b5bc]">
+            W panelu administracyjnym prowadz on-strategy pipeline. Aktualne dane, historie ryzyk i
+            mozliwosc natychmiastowej reakcji decyduja o tym, czy zgloszenie zostanie zatwierdzone.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {[
+              { title: 'Weryfikacja', detail: 'Status VAT, trust score, powiazania' },
+              { title: 'Score', detail: 'Aktualizuj ryzyko i notatki' },
+              { title: 'Historia', detail: 'Przegladaj komentarze i ocen' },
+            ].map((item) => (
+              <div
+                key={item.title}
+                className="rounded-2xl border border-[#353841] bg-[#050608] p-4 text-sm text-[#b0b5bc]"
+              >
+                <div className="text-xs uppercase tracking-[0.3em] text-[#8f949c]">{item.title}</div>
+                <div className="mt-2 text-white">{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </main>
   );

@@ -1,193 +1,219 @@
-import { checkCompany } from '../../../lib/api'; // Dostosuj liczbę kropek "../" w zależności od aliasów
+import { checkCompany } from '../../../lib/api';
 import Link from 'next/link';
 import ReportButton from '@/components/ReportButton';
-// === KOMPONENTY UI ===
 
-// Wykres kołowy (Gauge)
+const BACKEND_URL = 'http://localhost:3001';
+
 const TrustScoreGauge = ({ score }: { score: number }) => {
   const radius = 30;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  
-  let color = '#D92D20'; // Crimson
-  if (score >= 50) color = '#F79009'; // Orange
-  if (score >= 80) color = '#027A48'; // Teal
+
+  let color = '#f0433a';
+  if (score >= 50) color = '#f59e0b';
+  if (score >= 80) color = '#2bbf9f';
 
   return (
-    <div className="relative flex items-center justify-center w-32 h-32">
-      <svg className="transform -rotate-90 w-24 h-24">
-        <circle cx="50%" cy="50%" r={radius} stroke="#153152" strokeWidth="6" fill="transparent" />
-        <circle 
-          cx="50%" cy="50%" r={radius} 
-          stroke={color} 
-          strokeWidth="6" 
-          fill="transparent" 
-          strokeDasharray={circumference} 
-          strokeDashoffset={offset} 
-          strokeLinecap="round" 
-          className="transition-all duration-1000 ease-out" 
+    <div className="relative flex h-32 w-32 items-center justify-center">
+      <svg className="h-24 w-24 -rotate-90 transform">
+        <circle cx="50%" cy="50%" r={radius} stroke="#1f2b3a" strokeWidth="6" fill="transparent" />
+        <circle
+          cx="50%"
+          cy="50%"
+          r={radius}
+          stroke={color}
+          strokeWidth="6"
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out"
         />
       </svg>
-      <div className="absolute text-center flex flex-col items-center">
-        <span className="text-3xl font-bold text-white font-mono">{score}</span>
+      <div className="absolute flex flex-col items-center text-center">
+        <span className="text-3xl font-semibold text-white">{score}</span>
+        <span className="mt-1 text-[10px] uppercase tracking-widest text-slate-main">Score</span>
       </div>
     </div>
   );
 };
 
-// === STRONA RAPORTU ===
-
 export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const nip = params.id;
-  
-  // Używamy checkCompany zamiast checkVat
-  const data = await checkCompany(nip, 'NIP'); 
-  
+
+  const data = await checkCompany(nip, 'NIP');
+
   if (!data || data.error || !data.company) {
-      return (
-        <div className="min-h-screen bg-navy-900 text-white flex flex-col items-center justify-center p-4">
-            <h1 className="text-2xl font-bold text-crimson mb-2">Nie znaleziono podmiotu</h1>
-            <p className="text-slate-main">NIP: {nip}</p>
-            <Link href="/" className="mt-6 px-4 py-2 bg-navy-800 border border-navy-700 rounded hover:bg-navy-700">
-                Wróć do wyszukiwania
-            </Link>
+    return (
+      <div className="relative flex min-h-screen items-center justify-center bg-navy-900 px-6 text-center text-white">
+        <div className="absolute inset-0 bg-grid-pattern opacity-30" />
+        <div className="relative z-10 space-y-4">
+          <h1 className="text-2xl font-semibold text-crimson">Nie znaleziono podmiotu</h1>
+          <p className="text-slate-main">NIP: {nip}</p>
+          <Link
+            href="/"
+            className="inline-flex rounded-full border border-navy-700 px-4 py-2 text-xs uppercase tracking-widest text-slate-main transition hover:border-amber/40 hover:text-white"
+          >
+            Wroc do wyszukiwania
+          </Link>
         </div>
-      )
+      </div>
+    );
   }
 
   const isSafe = data.trustScore >= 70;
   const isCritical = data.trustScore <= 30;
 
-  // Logika kolorów (używamy zmiennych z CSS Tailwind v4)
-  const borderColor = isSafe ? 'border-teal/30' : isCritical ? 'border-crimson/30' : 'border-orange-500/30';
-  const statusBg = isSafe ? 'bg-teal/20 text-teal' : isCritical ? 'bg-crimson/20 text-crimson' : 'bg-orange-500/20 text-orange-500';
+  const borderColor = isSafe ? 'border-teal/30' : isCritical ? 'border-crimson/30' : 'border-amber/30';
+  const statusBg = isSafe
+    ? 'bg-teal/20 text-teal'
+    : isCritical
+      ? 'bg-crimson/20 text-crimson'
+      : 'bg-amber/20 text-amber';
+
+  const buildScreenshotSrc = (path?: string, url?: string) => {
+    if (url) return url;
+    if (!path) return '';
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${BACKEND_URL}${normalized}`;
+  };
 
   return (
-    <div className="min-h-screen bg-navy-900 p-4 md:p-8 font-sans text-slate-main">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* NAV */}
+    <main className="relative min-h-screen overflow-hidden bg-navy-900 px-6 py-10 text-slate-light">
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-32 right-[-10%] h-[360px] w-[360px] rounded-full bg-amber/15 blur-[130px]" />
+        <div className="absolute -bottom-40 left-[-10%] h-[420px] w-[420px] rounded-full bg-teal/15 blur-[150px]" />
+        <div className="absolute inset-0 bg-grid-pattern opacity-30" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-6xl space-y-8">
         <nav className="flex items-center justify-between">
-            <Link href="/" className="text-sm font-mono text-slate-main hover:text-teal transition-colors flex items-center gap-2">
-            ← POWRÓT DO SZUKANIA
-            </Link>
-            <div className="text-xs font-mono text-slate-main opacity-50">
-                SESSION ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}
-            </div>
+          <Link
+            href="/"
+            className="rounded-full border border-navy-700 px-4 py-2 text-xs uppercase tracking-widest text-slate-main transition hover:border-amber/40 hover:text-white"
+          >
+            Powrot do wyszukiwania
+          </Link>
+          <div className="text-xs font-mono text-slate-main opacity-60">
+            SESSION ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}
+          </div>
         </nav>
 
-        {/* === BENTO GRID === */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
+          <div className={`surface relative col-span-1 md:col-span-8 rounded-3xl border ${borderColor} p-6 md:p-8`}>
+            <div className={`absolute left-0 top-0 h-full w-1.5 rounded-l-3xl ${isSafe ? 'bg-teal' : isCritical ? 'bg-crimson' : 'bg-amber'}`} />
 
-          {/* SEKCJA 1: GŁÓWNA KARTA PODMIOTU */}
-          <div className={`col-span-1 md:col-span-8 bg-navy-800 border ${borderColor} rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl`}>
-            <div className={`absolute top-0 left-0 w-1.5 h-full ${isSafe ? 'bg-teal' : 'bg-crimson'}`}></div>
-            
-            <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-              <div className="flex-1">
-                 <div className="flex items-center gap-3 mb-3">
-                   <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                     {data.company.name}
-                   </h1>
-                 </div>
-                 
-                 <div className="flex flex-wrap gap-3 mb-6">
-                    <span className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide border border-transparent ${statusBg}`}>
-                        {data.riskLevel}
+            <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex-1 space-y-4">
+                <div className="space-y-2">
+                  <h1 className="text-2xl text-display text-white md:text-3xl">{data.company.name}</h1>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-widest ${statusBg}`}>
+                      {data.riskLevel}
                     </span>
-                    <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-navy-900 border border-navy-700 text-slate-400">
-                        ŹRÓDŁO: {data.source}
+                    <span className="rounded-full border border-navy-700 bg-navy-900/70 px-3 py-1 text-xs uppercase tracking-widest text-slate-main">
+                      Zrodlo: {data.source}
                     </span>
-                 </div>
+                  </div>
+                </div>
 
-                 <div className="space-y-1 font-mono text-sm">
-                    <p>NIP: <span className="text-white select-all">{data.query}</span></p>
-                    <p>ADRES: <span className="text-white">{data.company.address || 'Brak danych adresowych'}</span></p>
-                 </div>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    NIP: <span className="font-mono text-white">{data.query}</span>
+                  </p>
+                  <p>
+                    Adres: <span className="text-white">{data.company.address || 'Brak danych adresowych'}</span>
+                  </p>
+                </div>
               </div>
 
-              <div className="hidden md:flex flex-col items-center bg-navy-900/50 p-4 rounded-xl border border-navy-700">
-                 <TrustScoreGauge score={data.trustScore} />
-                 <span className="text-[10px] font-bold text-slate-main tracking-[0.2em] uppercase mt-[-10px]">Trust Score</span>
+              <div className="hidden md:flex rounded-2xl border border-navy-700 bg-navy-900/60 p-4">
+                <TrustScoreGauge score={data.trustScore} />
               </div>
             </div>
           </div>
 
-          {/* SEKCJA 2: STATUS PRAWNY */}
-          <div className="col-span-1 md:col-span-4 bg-navy-800 border border-navy-700 rounded-2xl p-6 flex flex-col justify-center">
-             <h3 className="text-slate-main text-xs uppercase font-bold tracking-widest mb-6 border-b border-navy-700 pb-2">STATUS PRAWNY</h3>
-             <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <span className="text-sm">Status VAT</span>
-                    <span className={`font-mono font-bold ${data.company.vat === 'Czynny' ? 'text-teal' : 'text-crimson'}`}>
-                        {data.company.vat}
-                    </span>
-                </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-sm">Data Rejestracji</span>
-                    <span className="text-white font-mono text-sm">{data.company.regDate || '2023-01-01'}</span>
-                </div>
-             </div>
-          </div>
-
-          {/* SEKCJA 3: TELEFONY */}
-          <div className="col-span-1 md:col-span-4 bg-navy-800 border border-navy-700 rounded-2xl p-6">
-            <h3 className="text-white font-bold mb-6 flex items-center gap-2 text-sm uppercase tracking-wider">
-              <span className="text-teal">#</span> Kontakty
-            </h3>
-            <div className="space-y-2">
-                 {data.company.phones && data.company.phones.length > 0 ? (
-                   data.company.phones.map((p) => (
-                     <Link key={p.number} href={`/report/phone/${encodeURIComponent(p.number.replace(/\s/g, ''))}`} 
-                        className="group flex justify-between items-center bg-navy-900 hover:bg-navy-700 border border-navy-700 p-3 rounded-lg transition-all cursor-pointer">
-                       <span className="font-mono text-teal text-sm group-hover:text-white transition-colors">
-                            {p.number}
-                       </span>
-                     </Link>
-                   ))
-                 ) : (
-                   <div className="text-slate-main text-sm italic p-4 text-center border border-dashed border-navy-700 rounded-lg">
-                       Brak numerów publicznych.
-                   </div>
-                 )}
+          <div className="surface-soft col-span-1 rounded-3xl border border-navy-700 p-6 md:col-span-4">
+            <h3 className="text-xs uppercase tracking-[0.3em] text-slate-main">Status prawny</h3>
+            <div className="mt-6 space-y-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span>Status VAT</span>
+                <span className={`font-mono font-semibold ${data.company.vat === 'Czynny' ? 'text-teal' : 'text-crimson'}`}>
+                  {data.company.vat}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Data rejestracji</span>
+                <span className="font-mono text-white">{data.company.regDate || '2023-01-01'}</span>
+              </div>
             </div>
           </div>
 
-          {/* SEKCJA 4: SPOŁECZNOŚĆ */}
-          <div className="col-span-1 md:col-span-8 bg-navy-800 border border-navy-700 rounded-2xl p-6">
-              <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-white font-bold text-sm uppercase tracking-wider">Analiza Zgłoszeń</h3>
-                 <span className="bg-navy-900 text-slate-300 px-3 py-1 rounded text-xs font-mono border border-navy-700">
-                    TOTAL: {data.community?.totalReports || 0}
-                 </span>
-              </div>
+          <div className="surface-soft col-span-1 rounded-3xl border border-navy-700 p-6 md:col-span-4">
+            <h3 className="text-xs uppercase tracking-[0.3em] text-slate-main">Kontakty</h3>
+            <div className="mt-6 space-y-2">
+              {data.company.phones && data.company.phones.length > 0 ? (
+                data.company.phones.map((p) => (
+                  <Link
+                    key={p.number}
+                    href={`/report/phone/${encodeURIComponent(p.number.replace(/\s/g, ''))}`}
+                    className="flex items-center justify-between rounded-2xl border border-navy-700 bg-navy-900/60 px-4 py-3 transition hover:border-amber/40"
+                  >
+                    <span className="font-mono text-sm text-teal">{p.number}</span>
+                  </Link>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-navy-700 px-4 py-6 text-center text-sm text-slate-main">
+                  Brak numerow publicznych.
+                </div>
+              )}
+            </div>
+          </div>
 
-              <div className="space-y-3">
-                 {data.community?.latestComments && data.community.latestComments.length > 0 ? (
-                    data.community.latestComments.map((c, idx) => (
-                      <div key={idx} className="bg-navy-900/50 p-4 rounded-lg border-l-2 border-crimson">
-                        <div className="flex justify-between text-xs text-slate-500 mb-2">
-                          <span className="font-mono">{c.date || 'Dzisiaj'}</span>
-                          <span className="text-crimson font-bold bg-crimson/10 px-2 rounded">{c.reason}</span>
-                        </div>
-                        <p className="text-sm text-slate-300">"{c.comment}"</p>
+          <div className="surface col-span-1 rounded-3xl border border-navy-700 p-6 md:col-span-8">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs uppercase tracking-[0.3em] text-slate-main">Analiza zgloszen</h3>
+              <span className="rounded-full border border-navy-700 bg-navy-900/70 px-3 py-1 text-xs uppercase tracking-widest text-slate-main">
+                Total: {data.community?.totalReports || 0}
+              </span>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {data.community?.latestComments && data.community.latestComments.length > 0 ? (
+                data.community.latestComments.map((c, idx) => (
+                  <div key={idx} className="rounded-2xl border border-navy-700 bg-navy-900/60 p-4">
+                    <div className="flex items-center justify-between text-xs text-slate-main">
+                      <span className="font-mono">{c.date || 'Dzisiaj'}</span>
+                      <span className="rounded-full border border-crimson/30 bg-crimson/10 px-2 py-1 text-crimson">
+                        {c.reason}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm text-slate-light">"{c.comment}"</p>
+                    {(c.screenshotPath || c.screenshotUrl) && (
+                      <div className="mt-4">
+                        <img
+                          src={buildScreenshotSrc(c.screenshotPath, c.screenshotUrl)}
+                          alt="Dowod"
+                          className="h-32 w-full rounded-2xl border border-navy-700 object-cover"
+                        />
                       </div>
-                    ))
-                 ) : (
-                   <div className="text-center py-6 text-slate-main text-sm">
-                     Brak negatywnych zgłoszeń w bazie.
-                   </div>
-                 )}
-              </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-navy-700 px-4 py-6 text-center text-sm text-slate-main">
+                  Brak negatywnych zgloszen w bazie.
+                </div>
+              )}
             </div>
-            {/* SEKCJA ACTION (Stopka) */}
-<div className="col-span-1 md:col-span-12 flex justify-end pt-4">
-<ReportButton defaultTargetType="NIP" defaultValue={data.query} />
-</div>
+          </div>
 
+          <div className="col-span-1 flex justify-end md:col-span-12">
+            <ReportButton defaultTargetType="NIP" defaultValue={data.query} />
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
