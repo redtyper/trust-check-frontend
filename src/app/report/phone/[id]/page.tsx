@@ -1,212 +1,202 @@
-import { checkCompany } from '../../../lib/api';
+import React from 'react';
 import Link from 'next/link';
-import ReportButton from '../../../../components/ReportButton';
+import { checkCompany } from '../../../lib/api';
+import CommentsList from '../../../../components/CommentsList';
+import AddCommentForm from '../../../../components/AddCommentForm';
 
-// Mapa tłumaczeń kodów na czytelne etykiety
-const reasonMap: Record<string, string> = {
-  'SCAM': '⚠️ Oszustwo / Wyłudzenie',
-  'SPAM': '📞 Spam Telefoniczny',
-  'TOWAR': '📦 Nieotrzymany Towar',
-  'RODO': '🔒 Wyciek Danych / RODO',
-  'OTHER': 'ℹ️ Inne'
-};
-
-const getOsintData = (comments: any[]) => {
-  const emails = new Set<string>();
-  const fbs = new Set<string>();
-  const names = new Set<string>();
-  const bankAccounts = new Set<string>();
-
-  comments?.forEach(c => {
-    if (c.reportedEmail) emails.add(c.reportedEmail);
-    if (c.facebookLink) fbs.add(c.facebookLink);
-    if (c.scammerName) names.add(c.scammerName);
-    if (c.bankAccount) bankAccounts.add(c.bankAccount);
-  });
-
-  return {
-    emails: Array.from(emails),
-    fbs: Array.from(fbs),
-    names: Array.from(names),
-    bankAccounts: Array.from(bankAccounts)
-  };
-};
-
-
-export default async function PhoneReportPage(props: { params: Promise<{ id: string }> }) {
+export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const decodedPhone = decodeURIComponent(params.id);
-  
-  // Ważne: Wymuszamy pobranie świeżych danych (bez cache), żeby zobaczyć nowe zgłoszenie od razu
-  const data = await checkCompany(decodedPhone, 'PHONE');
+  const rawInput = decodeURIComponent(params.id); 
 
-  if (!data || data.error) {
+  const data = await checkCompany(rawInput, 'PHONE');
+
+  if (!data) {
     return (
-       <div className="min-h-screen bg-navy-900 text-white flex flex-col items-center justify-center p-4">
-          <h1 className="text-2xl font-bold text-crimson mb-2">Brak Danych</h1>
-          <p className="text-slate-main">Numer {decodedPhone} nie posiada jeszcze historii.</p>
-          <div className="mt-8">
-             <ReportButton defaultTargetType="PHONE" defaultValue={decodedPhone} />
-          </div>
-          <Link href="/" className="mt-4 text-sm text-slate-500 hover:text-white">Wróć</Link>
-       </div>
+      <div className="min-h-screen bg-navy-900 text-white flex flex-col items-center justify-center p-4">
+        <h1 className="text-2xl font-bold text-slate-400 mb-2">Nie znaleziono danych</h1>
+        <p className="mb-6 text-slate-500">Brak historii dla tego numeru/osoby.</p>
+        <Link href={`/report/new?value=${rawInput}&type=PHONE`} className="px-6 py-3 bg-crimson rounded-lg font-bold hover:bg-red-700 transition">
+           + Dodaj pierwsze zgłoszenie
+        </Link>
+      </div>
     );
   }
 
-  const score = data.trustScore;
-  const isSafe = score >= 70;
-  const isCritical = score <= 30;
-  const osint = getOsintData(data.community?.latestComments || []);
-  const hasOsint = osint.emails.length > 0 || osint.fbs.length > 0;
+  const isSafe = data.trustScore >= 70;
+  const isCritical = data.trustScore <= 30;
+  const borderColor = isSafe ? 'border-teal/30' : isCritical ? 'border-crimson/30' : 'border-orange-500/30';
+  const statusBg = isSafe ? 'bg-teal/20 text-teal' : isCritical ? 'bg-crimson/20 text-crimson' : 'bg-orange-500/20 text-orange-500';
 
-  const scoreColor = isSafe ? 'text-teal' : isCritical ? 'text-crimson' : 'text-orange-500';
-  const borderColor = isSafe ? 'border-teal' : isCritical ? 'border-crimson' : 'border-orange-500';
+  // --- POPRAWIONA AGREGACJA DANYCH OSINT ---
+  // Szukamy pierwszego wystąpienia każdego pola w historii komentarzy (od najnowszego)
+  const comments = data.community?.latestComments || [];
+
+  const displayEmail = comments.find(c => c.reportedEmail)?.reportedEmail;
+  const displayFb = comments.find(c => c.facebookLink)?.facebookLink;
+  const displayBank = comments.find(c => c.bankAccount)?.bankAccount;
+  
+  // Telefon:
+  // 1. Jeśli to strona telefonu (isPhone), to głównym telefonem jest query.
+  // 2. Jeśli to strona osoby (query=Jan), szukamy telefonu w komentarzach LUB w relacji company.
+  let displayPhone = null;
+  
+  if (data.isPhone) {
+      displayPhone = data.query; // Główny numer strony
+  } else {
+      // Szukamy w komentarzach
+      displayPhone = comments.find(c => c.phoneNumber)?.phoneNumber;
+      // Lub w firmie
+      if (!displayPhone && data.company?.phones?.[0]) {
+          displayPhone = data.company.phones[0].number;
+      }
+  }
+  
+  // Jeśli mamy numer w komentarzach inny niż główny (np. zgłoszono alternatywny numer oszusta),
+  // możemy go wyświetlić jako dodatkowy, ale na razie skupmy się na wyświetleniu czegokolwiek.
+
+  const hasOsint = displayPhone || displayEmail || displayFb || displayBank;
 
   return (
-    <main className="min-h-screen bg-navy-900 text-white p-4 md:p-8 font-sans">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-navy-900 p-4 md:p-8 font-sans text-slate-main">
+      <div className="max-w-5xl mx-auto space-y-8">
         
-        <Link href="/" className="inline-flex items-center text-slate-main hover:text-white transition-colors text-sm font-mono">
-          ← WRÓĆ DO WYSZUKIWANIA
-        </Link>
+        {/* NAV */}
+        <nav className="flex items-center justify-between">
+          <Link href="/" className="text-sm font-mono text-slate-main hover:text-teal transition-colors flex items-center gap-2">
+            ← POWRÓT DO SZUKANIA
+          </Link>
+          <div className="text-xs font-mono text-slate-main opacity-50">
+            SESSION ID: {Math.random().toString(36).substr(2, 9).toUpperCase()}
+          </div>
+        </nav>
 
-        {/* KARTA GŁÓWNA */}
-        <div className={`relative overflow-hidden bg-navy-800 rounded-3xl border ${borderColor} shadow-2xl`}>
-          <div className={`absolute left-0 top-0 bottom-0 w-2 ${isSafe ? 'bg-teal' : isCritical ? 'bg-crimson' : 'bg-orange-500'}`} />
+        {/* GŁÓWNA KARTA */}
+        <div className={`bg-navy-800 border ${borderColor} rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl`}>
+          <div className={`absolute top-0 left-0 w-1.5 h-full ${isSafe ? 'bg-teal' : isCritical ? 'bg-crimson' : 'bg-orange-500'}`}></div>
           
-          <div className="p-8 flex flex-col md:flex-row gap-8 items-start justify-between">
-            <div>
-              <span className="text-xs font-bold text-slate-main uppercase tracking-widest block mb-2">
-                Raport Numeru
-              </span>
-              <h1 className="text-4xl md:text-5xl font-mono text-white tracking-tight mb-4">
-                {data.query}
-              </h1>
-              <div className="flex flex-wrap gap-3">
-                 <span className={`px-4 py-2 rounded-lg text-sm font-bold border ${borderColor} bg-navy-900 ${scoreColor}`}>
-                    RYZYKO: {data.riskLevel}
-                 </span>
-                 <span className="px-4 py-2 rounded-lg text-sm font-bold border border-navy-700 bg-navy-900 text-slate-400">
-                    KRAJ: PL
-                 </span>
+          <div className="flex flex-col md:flex-row justify-between items-start gap-6 relative z-10">
+            <div className="flex-1 w-full">
+              
+              {/* HEADER */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                 <div>
+                    <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-2 break-all">
+                        {data.query}
+                    </h1>
+                    <div className="flex flex-wrap gap-3">
+                        <span className={`px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide border border-transparent ${statusBg}`}>
+                        Ryzyko: {data.riskLevel}
+                        </span>
+                        <span className="px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-navy-900 border border-navy-700 text-slate-400">
+                        Źródło: {data.source === 'DB' ? 'Baza Danych' : 'Nowy Zapis'}
+                        </span>
+                    </div>
+                 </div>
+                 
+                 <div className="flex items-center gap-4">
+                     <div className="flex flex-col items-center justify-center w-24 h-24 rounded-full border-4 border-navy-700 bg-navy-900 shadow-inner">
+                        <span className={`text-2xl font-bold ${isSafe ? 'text-teal' : 'text-crimson'}`}>{data.trustScore}</span>
+                        <span className="text-[10px] uppercase text-slate-500 tracking-widest mt-1">Score</span>
+                     </div>
+                 </div>
               </div>
-            </div>
 
-            <div className="bg-navy-900/50 p-6 rounded-2xl border border-navy-700 text-center min-w-[140px]">
-                 <div className={`text-5xl font-bold ${scoreColor} mb-1`}>{score}</div>
-                 <div className="text-xs text-slate-main uppercase tracking-widest">Trust Score</div>
+              {/* SEKCJA OSINT - WYŚWIETLANA ZAWSZE JEŚLI SĄ DANE */}
+              {hasOsint && (
+                  <div className="bg-navy-900/40 rounded-xl border border-navy-700/50 p-5 mb-6 backdrop-blur-sm">
+                      <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2">
+                          <span>🕵️</span> Znane Dane Kontaktowe (OSINT)
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                          
+                          {/* TELEFON */}
+                          {displayPhone && (
+                              <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-navy-800 flex items-center justify-center text-teal">📞</div>
+                                  <div>
+                                      <p className="text-xs text-slate-500 uppercase font-bold">Telefon</p>
+                                      <p className="text-white font-mono text-sm">{displayPhone}</p>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* EMAIL */}
+                          {displayEmail && (
+                              <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-navy-800 flex items-center justify-center text-blue-400">✉️</div>
+                                  <div>
+                                      <p className="text-xs text-slate-500 uppercase font-bold">E-mail</p>
+                                      <p className="text-white font-mono text-sm break-all">{displayEmail}</p>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* LINK */}
+                          {displayFb && (
+                              <div className="flex items-start gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-navy-800 flex items-center justify-center text-blue-500">🔗</div>
+                                  <div>
+                                      <p className="text-xs text-slate-500 uppercase font-bold">Profil FB/OLX</p>
+                                      <a href={displayFb} target="_blank" className="text-blue-400 hover:text-blue-300 text-sm break-all underline decoration-dotted">
+                                          Zobacz profil
+                                      </a>
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* BANK */}
+                          {displayBank && (
+                              <div className="flex items-start gap-3 md:col-span-2 bg-navy-800/50 p-2 rounded-lg border border-navy-700/30">
+                                  <div className="w-8 h-8 rounded-lg bg-navy-800 flex items-center justify-center text-yellow-500">🏦</div>
+                                  <div>
+                                      <p className="text-xs text-slate-500 uppercase font-bold">Numer Konta Bankowego</p>
+                                      <p className="text-white font-mono text-sm tracking-wide break-all text-yellow-500/90">{displayBank}</p>
+                                  </div>
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              )}
+
+              {/* FIRMA (JEŚLI JEST) */}
+              {data.company && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-navy-900 border border-navy-700">
+                      <span className="text-xl">🏢</span>
+                      <div>
+                          <p className="text-xs uppercase font-bold text-slate-500">Powiązana firma</p>
+                          <div className="flex items-baseline gap-2">
+                              <span className="text-white font-bold">{data.company.name}</span>
+                              <span className="text-xs text-slate-400 font-mono">NIP: {data.company.nip}</span>
+                          </div>
+                      </div>
+                  </div>
+              )}
+
             </div>
           </div>
-
-          {/* DANE OSINT */}
-          {hasOsint && (
-    <div className="bg-navy-900/80 border-t border-navy-700 p-6 md:p-8">
-        <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-            <span className="text-blue-400">🕵️‍♂️</span> Zidentyfikowane Dane (OSINT)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* Imiona oszustów */}
-            {osint.names.length > 0 && (
-                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
-                    <span className="text-xs text-slate-500 uppercase font-bold block mb-2">👤 Podejrzane Tożsamości</span>
-                    {osint.names.map((name, i) => <div key={i} className="font-bold text-white">{name}</div>)}
-                </div>
-            )}
-
-            {/* Konta bankowe */}
-            {osint.bankAccounts.length > 0 && (
-                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
-                    <span className="text-xs text-slate-500 uppercase font-bold block mb-2">💳 Konta Bankowe</span>
-                    {osint.bankAccounts.map((acc, i) => (
-                        <div key={i} className="font-mono text-crimson text-sm break-all">{acc}</div>
-                    ))}
-                </div>
-            )}
-
-            {/* Emaile */}
-            {osint.emails.length > 0 && (
-                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
-                    <span className="text-xs text-slate-500 uppercase font-bold block mb-2">✉️ Adresy Email</span>
-                    {osint.emails.map(e => <div key={e} className="font-mono text-teal text-sm">{e}</div>)}
-                </div>
-            )}
-
-            {/* Profile */}
-            {osint.fbs.length > 0 && (
-                <div className="bg-navy-800 border border-navy-700 p-4 rounded-lg">
-                     <span className="text-xs text-slate-500 uppercase font-bold block mb-2">🔗 Profile Społecznościowe</span>
-                    {osint.fbs.map(link => (
-                        <a key={link} href={link} target="_blank" className="block text-blue-400 hover:underline truncate text-sm">{link}</a>
-                    ))}
-                </div>
-            )}
-        </div>
-    </div>
-)}
-
-          {/* ACTIONS */}
-          <div className="bg-navy-900/30 p-4 flex justify-end border-t border-navy-700">
-             <ReportButton defaultTargetType="PHONE" defaultValue={decodedPhone} />
-          </div>
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-teal/5 rounded-full blur-3xl pointer-events-none"></div>
         </div>
 
         {/* LISTA ZGŁOSZEŃ */}
-        <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                Zgłoszenia Społeczności
-                <span className="bg-navy-800 text-slate-main text-sm px-3 py-1 rounded-full border border-navy-700">
-                    {data.community?.totalReports || 0}
-                </span>
-            </h2>
-
-            {data.community?.latestComments && data.community.latestComments.length > 0 ? (
-                <div className="grid gap-4">
-                    {data.community.latestComments.map((comment, idx) => (
-                        <div key={idx} className="bg-navy-800 border border-navy-700 p-6 rounded-xl shadow-lg">
-                            <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                                <div className="flex flex-col gap-2">
-                                    {/* GWIAZDKI */}
-                                    <div className="flex text-yellow-500 text-lg">
-                                        {'★'.repeat(comment.rating || 1)}
-                                        {'☆'.repeat(5 - (comment.rating || 1))}
-                                    </div>
-                                    
-                                    {/* === TUTAJ DODALIŚMY WYŚWIETLANIE POWODU === */}
-                                    <span className="inline-block bg-navy-900 border border-navy-600 text-slate-300 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide w-fit">
-                                        {reasonMap[comment.reason] || comment.reason}
-                                    </span>
-                                </div>
-                                <span className="text-slate-500 text-sm font-mono">
-                                    {new Date(comment.date).toLocaleDateString('pl-PL')}
-                                </span>
-                            </div>
-
-                            <p className="text-slate-200 leading-relaxed bg-navy-900/50 p-4 rounded-lg border border-navy-700/50">
-                                "{comment.comment}"
-                            </p>
-
-                            {/* OSINT wewnątrz komentarza (jeśli ten konkretny zgłaszający podał dane) */}
-                            {(comment.reportedEmail || comment.facebookLink) && (
-                                <div className="mt-4 flex gap-3 text-xs pt-3 border-t border-navy-700/50">
-                                    {comment.reportedEmail && (
-                                        <span className="text-teal bg-teal/10 px-2 py-1 rounded">✉️ {comment.reportedEmail}</span>
-                                    )}
-                                    {comment.facebookLink && (
-                                        <span className="text-blue-400 bg-blue-400/10 px-2 py-1 rounded">👤 Profil FB/OLX</span>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-12 border-2 border-dashed border-navy-700 rounded-xl">
-                    <p className="text-slate-500">Brak zgłoszeń dla tego numeru. Bądź pierwszy!</p>
-                </div>
-            )}
+        <div className="bg-navy-800 border border-navy-700 rounded-2xl p-6 md:p-8">
+          <div className="flex justify-between items-center mb-8 border-b border-navy-700 pb-4">
+            <h3 className="text-white font-bold text-lg uppercase tracking-wider flex items-center gap-2">
+                <span>💬</span> Historia Zgłoszeń
+            </h3>
+            <span className="bg-navy-900 text-slate-300 px-3 py-1 rounded text-xs font-mono border border-navy-700">
+              TOTAL: {data.community?.totalReports || 0}
+            </span>
+          </div>
+          
+          <CommentsList comments={comments} />
         </div>
+
+        {/* FORMULARZ KOMENTARZA */}
+        <div className="mt-8">
+            <AddCommentForm targetType="PHONE" targetValue={data.query} />
+        </div>
+
       </div>
-    </main>
+    </div>
   );
 }
